@@ -1,0 +1,1708 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#f5f5f5">
+<script>
+/* 테마(다크/라이트) — 첫 화면 그리기 전에 적용해서 깜빡임 방지 */
+(function () {
+  /* 항상 라이트 모드로 시작 (예전에 저장된 다크 설정은 지움). 다크는 토글 버튼으로만 켜짐 */
+  var t = 'light';
+  try { localStorage.removeItem('pepsiCalc2ho_theme'); } catch (e) {}
+  document.documentElement.setAttribute('data-theme', t);
+  var m = document.querySelector('meta[name="theme-color"]');
+  if (m) m.setAttribute('content', t === 'light' ? '#f5f5f5' : '#000000');
+})();
+</script>
+<title>캔2호 라인 탄산시럽 계산기</title>
+<style>
+  /* ===== 다크 모드 (흑백) ===== */
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: rgba(255,255,255,0.12); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+    background: #000;
+    margin: 0;
+    padding: 12px;
+    color: #f2f2f2;
+  }
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    background: #0d0d0d;
+    border: 1px solid #333;
+    border-radius: 14px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+    overflow: hidden;
+  }
+  header {
+    background: #1a1a1a;
+    color: #fff;
+    padding: 18px 20px;
+    border-bottom: 1px solid #333;
+  }
+  header h1 { margin: 0 0 4px 0; font-size: 1.4rem; }
+  header p { margin: 0; opacity: 0.9; font-size: 0.9rem; color: #ccc; }
+  .photo-section {
+    padding: 16px 20px;
+    background: #111;
+    border-bottom: 1px solid #333;
+  }
+  .photo-btn {
+    background: #2b2b2b;
+    color: #fff;
+    padding: 14px 22px;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border: 1px solid #555;
+    cursor: pointer;
+    width: 100%;
+    max-width: 320px;
+    transition: background-color .12s, transform .06s;
+  }
+  .photo-btn:hover { background: #3a3a3a !important; }
+  .photo-btn:active { background: #555 !important; transform: scale(0.98); }
+  #photoPreview {
+    max-width: 100%;
+    margin-top: 12px;
+    border-radius: 8px;
+    display: none;
+    border: 1px solid #333;
+  }
+  .ocr-status {
+    margin-top: 10px;
+    font-size: 0.95rem;
+    color: #e6e6e6;
+    min-height: 1.4em;
+  }
+  .tabs { display: flex; gap: 8px; padding: 10px 12px; background: #000; border-bottom: 1px solid #333; }
+  .tab {
+    flex: 1;
+    padding: 14px 10px;
+    text-align: center;
+    cursor: pointer;
+    font-weight: 600;
+    background: #1f1f1f;
+    color: #8f8f8f;
+    border: 1px solid #3a3a3a;
+    border-radius: 10px;
+    font-size: 1rem;
+    transition: background-color .12s, color .12s, transform .08s;
+  }
+  .tab:hover { background: #2a2a2a; color: #bdbdbd; }
+  .tab:active { background: #3a3a3a; transform: scale(0.98); }
+  .tab.active {
+    background: #ffffff;
+    color: #000000;
+    border: 1px solid #ffffff;
+    font-weight: 800;
+    box-shadow: 0 0 0 2px #000, 0 0 0 4px #ffffff;
+  }
+  .tab.active::before { content: "✓ "; }
+  .tab.active:hover { background: #e6e6e6; color: #000; }
+  .tab.active:active { background: #cfcfcf; color: #000; transform: scale(0.98); }
+  .panel { display: none; padding: 18px 20px; }
+  .panel.active { display: block; }
+  .section {
+    background: #1a1a1a;
+    border: 1px solid #2e2e2e;
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+  .section h3 { margin: 0 0 10px 0; font-size: 1.05rem; color: #fff; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+  label { display: block; font-size: 0.88rem; font-weight: 500; margin-bottom: 4px; color: #d0d0d0; }
+  input[data-num] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #444;
+    border-radius: 6px;
+    font-size: 1.05rem;
+    background: #111;
+    color: #fff;
+    caret-color: #fff;
+    color-scheme: dark;
+  }
+  input[data-num]::placeholder { color: #777; opacity: 1; }
+  input[data-num]:focus { outline: none; border-color: #ddd; box-shadow: 0 0 0 2px rgba(255,255,255,0.25); }
+  input[data-num]::-webkit-inner-spin-button, input[data-num]::-webkit-outer-spin-button { filter: invert(0.85); opacity: 0.6; }
+  .yellow { background: #2e2e2e !important; border-color: #e0e0e0 !important; color: #fff !important; }
+  .result-box {
+    background: #161616;
+    border: 1px solid #333;
+    border-left: 4px solid #fff;
+    padding: 14px;
+    border-radius: 8px;
+  }
+  .result-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid #2e2e2e;
+    font-size: 0.95rem;
+    color: #e6e6e6;
+  }
+  .result-row:last-child { border-bottom: none; }
+  .highlight { font-weight: 700; color: #fff; font-size: 1.08rem; }
+  .result-row small { color: #aaa; }
+  .site-footer { text-align: center; font-size: 0.75rem; color: #8a8a8a; background: #0a0a0a; border-top: 1px solid #262626; padding: 12px 20px 14px; letter-spacing: 0.02em; }
+  .note { font-size: 0.8rem; color: #9a9a9a; margin-top: 12px; line-height: 1.4; }
+  .cand-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .cand-btn { flex: 1 1 140px; padding: 10px; border-radius: 8px; border: 2px solid #666; background: #1a1a1a; color: #fff; font-size: 0.95rem; cursor: pointer; line-height: 1.35; }
+  .cand-btn:active { background: #333; }
+  .cand-btn.sel { background: #e6e6e6; color: #000; }
+  .tank-panel { margin-top: 14px; background: #161616; border: 1px solid #333; border-radius: 10px; padding: 12px; }
+  .tank-panel h3 { margin: 0 0 4px 0; font-size: 1.05rem; color: #fff; }
+  .tank-sub { font-size: 0.82rem; color: #9a9a9a; margin: 0 0 8px 0; }
+  .tank-head, .tank-row { display: grid; grid-template-columns: minmax(118px, 1.1fr) 1fr 1fr; gap: 8px; align-items: center; }
+  .tank-head { font-size: 0.8rem; color: #9a9a9a; padding: 0 4px 4px; }
+  .tank-row { padding: 6px 4px; border-radius: 8px; border: 2px solid #262626; margin-bottom: 4px; background: #1c1c1c; transition: background-color .12s, border-color .12s; }
+  .tank-row:hover { background: #242424; }
+  .tank-row:active { background: #303030; }
+  .tank-row.on { border-color: #fff; background: #2c2c2c; }
+  .tank-row.on:active { background: #3a3a3a; }
+  .tank-pick { display: flex; align-items: center; gap: 8px; min-height: 44px; margin: 0; cursor: pointer; font-size: 0.98rem; font-weight: 600; user-select: none; color: #fff; border-radius: 6px; }
+  .tank-pick:active { background: rgba(255,255,255,0.10); }
+  .tank-pick input { width: 26px; height: 26px; margin: 0; flex: none; accent-color: #e6e6e6; color-scheme: dark; }
+  .tank-pick small { display: block; font-weight: 400; color: #999; font-size: 0.75rem; }
+  .tank-row input[data-num] { padding: 9px 8px; font-size: 1rem; }
+  .avg-mode { display: flex; gap: 6px; margin: 8px 0; flex-wrap: wrap; }
+  .avg-mode button { flex: 1 1 120px; padding: 9px; border-radius: 8px; border: 2px solid #666; background: #1a1a1a; color: #ddd; font-size: 0.9rem; cursor: pointer; transition: background-color .12s; }
+  .avg-mode button:hover { background: #262626; }
+  .avg-mode button:active { background: #3a3a3a; }
+  .avg-mode button.sel { background: #e6e6e6; color: #000; border-color: #e6e6e6; }
+  .avg-mode button.sel:active { background: #bdbdbd; }
+  .tank-sum { font-size: 0.95rem; font-weight: 600; color: #fff; background: #222; border: 1px solid #3a3a3a; border-radius: 8px; padding: 10px; line-height: 1.45; }
+  .tank-sum small { font-weight: 400; color: #aaa; }
+  .tank-btns { display: flex; gap: 6px; margin-top: 8px; }
+  .tank-btns button { flex: 1; padding: 9px; border-radius: 8px; border: 1px solid #555; background: #222; color: #e6e6e6; font-size: 0.88rem; cursor: pointer; transition: background-color .12s; }
+  .tank-btns button:hover { background: #2c2c2c; }
+  .tank-btns button:active { background: #444; }
+
+  /* ===== UX 개선: 입력 글자 대비 / 맨 위로 버튼 / 키보드 회피 ===== */
+  body { padding-bottom: calc(96px + var(--kb-pad, 0px) + env(safe-area-inset-bottom, 0px)); }
+  input[data-num] {
+    background: #0d0d0d;
+    color: #fff;
+    -webkit-text-fill-color: #fff;
+    caret-color: #fff;
+    font-weight: 600;
+    opacity: 1;
+  }
+  input[data-num].yellow, .yellow {
+    background: #2a2a2a !important;
+    border-color: #e0e0e0 !important;
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+  }
+  input[data-num]::placeholder { color: #8c8c8c; -webkit-text-fill-color: #8c8c8c; opacity: 1; font-weight: 400; }
+  input[data-num]:disabled, input[data-num][readonly] { color: #fff; -webkit-text-fill-color: #fff; opacity: 1; }
+  .to-top {
+    position: fixed;
+    right: calc(16px + env(safe-area-inset-right, 0px));
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    z-index: 1000;
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    border: 1px solid #666;
+    background: #2a2a2a;
+    color: #fff;
+    font-size: 1.5rem; font-weight: 700; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.7);
+    cursor: pointer;
+    opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(8px);
+    transition: opacity .2s, visibility .2s, transform .2s, background-color .12s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .to-top.show { opacity: 0.92; visibility: visible; pointer-events: auto; transform: none; }
+  .to-top:hover { background: #3a3a3a; }
+  .to-top:active { background: #555; transform: scale(0.94); }
+  /* ===== 결과 이미지 저장/공유 · 저장값 초기화 ===== */
+  .share-row { margin-top: 12px; }
+  .share-btn {
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 1px solid #666;
+    background: #2b2b2b;
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color .12s, transform .06s;
+  }
+  .share-btn:hover { background: #3a3a3a; }
+  .share-btn:active { background: #555; transform: scale(0.98); }
+  .share-btn:disabled { opacity: 0.6; }
+  .reset-btn {
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px dashed #8a8a8a;
+    background: #141414;
+    color: #d6d6d6;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color .12s, transform .06s;
+  }
+  .reset-btn:hover { background: #262626; }
+  .reset-btn:active { background: #3d3d3d; color: #fff; transform: scale(0.97); }
+  .app-toast {
+    position: fixed; left: 50%; bottom: calc(86px + env(safe-area-inset-bottom, 0px)); z-index: 1100;
+    transform: translate(-50%, 10px); max-width: 88vw;
+    background: #262626; color: #fff; border: 1px solid #555; border-radius: 10px;
+    padding: 10px 16px; font-size: 0.92rem; box-shadow: 0 4px 14px rgba(0,0,0,0.7);
+    opacity: 0; visibility: hidden; transition: opacity .2s, visibility .2s, transform .2s; pointer-events: none;
+  }
+  .app-toast.show { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+  .img-overlay {
+    position: fixed; inset: 0; z-index: 1200; background: rgba(0,0,0,0.92);
+    display: none; flex-direction: column; align-items: center; justify-content: flex-start;
+    padding: calc(14px + env(safe-area-inset-top, 0px)) 12px calc(14px + env(safe-area-inset-bottom, 0px)); overflow-y: auto;
+  }
+  .img-overlay.show { display: flex; }
+  .img-overlay p { color: #e6e6e6; font-size: 0.95rem; margin: 4px 0 10px; text-align: center; }
+  .img-overlay img { max-width: 100%; border: 1px solid #444; border-radius: 8px; -webkit-touch-callout: default; }
+  .img-overlay .ov-btns { display: flex; gap: 8px; width: 100%; max-width: 480px; margin-top: 12px; }
+  .img-overlay .ov-btns a, .img-overlay .ov-btns button {
+    flex: 1; text-align: center; text-decoration: none; padding: 12px; border-radius: 8px; border: 1px solid #666;
+    background: #2b2b2b; color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background-color .12s;
+  }
+  .img-overlay .ov-btns a:active, .img-overlay .ov-btns button:active { background: #555; }
+  /* ===== 다크/라이트 모드 전환 버튼 ===== */
+  .theme-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    margin-top: 12px; padding: 9px 16px; min-height: 40px;
+    border-radius: 999px; border: 1px solid #666; background: #2b2b2b; color: #fff;
+    font-size: 0.95rem; font-weight: 700; cursor: pointer;
+    transition: background-color .12s, transform .06s;
+  }
+  .theme-btn:hover { background: #3a3a3a; }
+  .theme-btn:active { background: #555; transform: scale(0.97); }
+  .theme-btn .tt-to-dark { display: none; }
+  html[data-theme="light"] .theme-btn .tt-to-dark { display: inline; }
+  html[data-theme="light"] .theme-btn .tt-to-light { display: none; }
+
+  /* ===== 라이트 모드 (html[data-theme="light"]) — 다크 모드 규칙은 그대로 두고 덮어쓰기만 함 ===== */
+  html[data-theme="light"] { color-scheme: light; }
+  html[data-theme="light"] * { -webkit-tap-highlight-color: rgba(0,0,0,0.08); }
+  html[data-theme="light"] body { background: #f5f5f5; color: #111; }
+  html[data-theme="light"] .container { background: #fff; border-color: #d9d9d9; box-shadow: 0 2px 14px rgba(0,0,0,0.08); }
+  html[data-theme="light"] header { background: #fafafa; color: #111; border-bottom-color: #ddd; }
+  html[data-theme="light"] header p { color: #555; opacity: 1; }
+  html[data-theme="light"] .theme-btn { background: #fff; color: #111; border-color: #999; }
+  html[data-theme="light"] .theme-btn:hover { background: #eee; }
+  html[data-theme="light"] .theme-btn:active { background: #d6d6d6; }
+  html[data-theme="light"] .photo-section { background: #fafafa; border-bottom-color: #ddd; }
+  html[data-theme="light"] .photo-btn { background: #e6e6e6 !important; color: #111; border-color: #aaa; }
+  html[data-theme="light"] .photo-btn.photo-btn-alt { background: #f0f0f0 !important; }
+  html[data-theme="light"] .photo-btn:hover { background: #dcdcdc !important; }
+  html[data-theme="light"] .photo-btn:active { background: #c4c4c4 !important; }
+  html[data-theme="light"] .photo-help { color: #555 !important; }
+  html[data-theme="light"] #photoPreview { border-color: #ddd; }
+  html[data-theme="light"] .ocr-status { color: #222; }
+  html[data-theme="light"] .tabs { background: #fff; border-bottom-color: #ddd; }
+  html[data-theme="light"] .tab { background: #e6e6e6; color: #666; border-color: #d0d0d0; }
+  html[data-theme="light"] .tab:hover { background: #dadada; color: #444; }
+  html[data-theme="light"] .tab:active { background: #c8c8c8; }
+  html[data-theme="light"] .tab.active { background: #000; color: #fff; border-color: #000; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #000; }
+  html[data-theme="light"] .tab.active:hover { background: #222; color: #fff; }
+  html[data-theme="light"] .tab.active:active { background: #3a3a3a; color: #fff; }
+  html[data-theme="light"] .section { background: #fff; border-color: #ddd; }
+  html[data-theme="light"] .section h3 { color: #111; }
+  html[data-theme="light"] label { color: #333; }
+  html[data-theme="light"] input[data-num] {
+    background: #fff; color: #111; -webkit-text-fill-color: #111; caret-color: #111;
+    border-color: #9a9a9a; color-scheme: light;
+  }
+  html[data-theme="light"] input[data-num]::placeholder { color: #999; -webkit-text-fill-color: #999; }
+  html[data-theme="light"] input[data-num]:focus { border-color: #111; box-shadow: 0 0 0 2px rgba(0,0,0,0.18); }
+  html[data-theme="light"] input[data-num]:disabled, html[data-theme="light"] input[data-num][readonly] { color: #111; -webkit-text-fill-color: #111; }
+  html[data-theme="light"] .yellow, html[data-theme="light"] input[data-num].yellow {
+    background: #eaeaea !important; border-color: #555 !important; color: #111 !important; -webkit-text-fill-color: #111 !important;
+  }
+  html[data-theme="light"] .result-box { background: #fafafa; border-color: #ddd; border-left-color: #111; }
+  html[data-theme="light"] .result-row { color: #222; border-bottom-color: #e3e3e3; }
+  html[data-theme="light"] .highlight { color: #000; }
+  html[data-theme="light"] .result-row small { color: #666; }
+  html[data-theme="light"] .site-footer { background: #f0f0f0; color: #777; border-top-color: #ddd; }
+  html[data-theme="light"] .note { color: #666; }
+  html[data-theme="light"] .cand-btn { background: #fff; color: #111; border-color: #999; }
+  html[data-theme="light"] .cand-btn:active { background: #e0e0e0; }
+  html[data-theme="light"] .cand-btn.sel { background: #222; color: #fff; }
+  html[data-theme="light"] .tank-panel { background: #fff; border-color: #ddd; }
+  html[data-theme="light"] .tank-panel h3 { color: #111; }
+  html[data-theme="light"] .tank-tab-name { color: #666 !important; }
+  html[data-theme="light"] .tank-sub, html[data-theme="light"] .tank-head { color: #666; }
+  html[data-theme="light"] .tank-row { background: #f7f7f7; border-color: #e3e3e3; }
+  html[data-theme="light"] .tank-row:hover { background: #efefef; }
+  html[data-theme="light"] .tank-row:active { background: #e2e2e2; }
+  html[data-theme="light"] .tank-row.on { border-color: #111; background: #e9e9e9; }
+  html[data-theme="light"] .tank-row.on:active { background: #dadada; }
+  html[data-theme="light"] .tank-pick { color: #111; }
+  html[data-theme="light"] .tank-pick:active { background: rgba(0,0,0,0.08); }
+  html[data-theme="light"] .tank-pick input { accent-color: #222; color-scheme: light; }
+  html[data-theme="light"] .tank-pick small { color: #666; }
+  html[data-theme="light"] .avg-mode button { background: #f2f2f2; color: #333; border-color: #aaa; }
+  html[data-theme="light"] .avg-mode button:hover { background: #e6e6e6; }
+  html[data-theme="light"] .avg-mode button:active { background: #d4d4d4; }
+  html[data-theme="light"] .avg-mode button.sel { background: #111; color: #fff; border-color: #111; }
+  html[data-theme="light"] .avg-mode button.sel:active { background: #3a3a3a; }
+  html[data-theme="light"] .tank-sum { color: #111; background: #f2f2f2; border-color: #d6d6d6; }
+  html[data-theme="light"] .tank-sum small { color: #555; }
+  html[data-theme="light"] .tank-btns button { background: #eee; color: #222; border-color: #bbb; }
+  html[data-theme="light"] .tank-btns button:hover { background: #e2e2e2; }
+  html[data-theme="light"] .tank-btns button:active { background: #cfcfcf; }
+  html[data-theme="light"] .to-top { background: #fff; color: #111; border-color: #999; box-shadow: 0 3px 12px rgba(0,0,0,0.22); }
+  html[data-theme="light"] .to-top:hover { background: #eee; }
+  html[data-theme="light"] .to-top:active { background: #d6d6d6; }
+  html[data-theme="light"] .share-btn { background: #e6e6e6; color: #111; border-color: #999; }
+  html[data-theme="light"] .share-btn:hover { background: #dcdcdc; }
+  html[data-theme="light"] .share-btn:active { background: #c4c4c4; }
+  html[data-theme="light"] .reset-btn { background: #fff; color: #333; border-color: #888; }
+  html[data-theme="light"] .reset-btn:hover { background: #f0f0f0; }
+  html[data-theme="light"] .reset-btn:active { background: #dcdcdc; color: #000; }
+  html[data-theme="light"] .app-toast { background: #fff; color: #111; border-color: #bbb; box-shadow: 0 3px 12px rgba(0,0,0,0.2); }
+  html[data-theme="light"] .img-overlay { background: rgba(245,245,245,0.97); }
+  html[data-theme="light"] .img-overlay p { color: #222; }
+  html[data-theme="light"] .img-overlay img { border-color: #ccc; }
+  html[data-theme="light"] .img-overlay .ov-btns a, html[data-theme="light"] .img-overlay .ov-btns button { background: #e6e6e6; color: #111; border-color: #999; }
+  html[data-theme="light"] .img-overlay .ov-btns a:active, html[data-theme="light"] .img-overlay .ov-btns button:active { background: #c4c4c4; }
+  .tabs { flex-wrap: wrap; }
+  .tabs .tab { flex: 1 1 calc(33.333% - 8px); min-width: 0; padding-left: 4px; padding-right: 4px; word-break: keep-all; overflow-wrap: anywhere; line-height: 1.25; }
+  .tab .tab-sub { display: block; font-size: 0.78rem; font-weight: 600; margin-top: 2px; opacity: 0.85; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>캔2호 라인 탄산시럽 계산기</h1>
+    <p>사진 자동 인식 + 탱크 여러 개 선택(Brix 평균) + 수동 보정 가능</p>
+    <button type="button" id="themeToggle" class="theme-btn" onclick="toggleTheme()" aria-label="화면 모드 바꾸기"><span class="tt-to-light">☀️ 라이트 모드</span><span class="tt-to-dark">🌙 다크 모드</span></button>
+  </header>
+
+  <div class="photo-section">
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <button class="photo-btn" style="flex:1; min-width:140px;" onclick="document.getElementById('cameraInput').click()">
+        📷 사진 찍기
+      </button>
+      <button class="photo-btn photo-btn-alt" style="flex:1; min-width:140px; background:#202020;" onclick="document.getElementById('galleryInput').click()">
+        🖼️ 사진 첨부
+      </button>
+    </div>
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this)">
+    <input type="file" id="galleryInput" accept="image/*" style="display:none" onchange="handlePhoto(this)">
+    <p class="photo-help" style="font-size:0.85rem; color:#aaa; margin:10px 0 0;">사진을 찍거나 첨부하면 1~6번 탱크(TK801~TK806)의 Brix·kg을 자동으로 읽어서 아래 탱크 목록에 넣습니다. 틀린 부분은 직접 수정하세요.</p>
+    <img id="photoPreview" alt="첨부 사진">
+    <div id="ocrStatus" class="ocr-status"></div>
+    <div class="tank-panel">
+      <h3>탱크 선택 <span id="tankTabName" class="tank-tab-name" style="font-size:0.85rem; font-weight:500; color:#aaa;"></span></h3>
+      <p class="tank-sub">계산할 탱크를 눌러서 선택하세요 (여러 개 가능). 사진 없이 직접 입력해도 됩니다. 선택한 탱크의 kg 합계와 평균 Brix가 현재 탭의 시럽 입력에 들어갑니다.</p>
+      <div class="tank-head"><span>탱크 (화면 왼쪽부터)</span><span>Brix</span><span>kg</span></div>
+      <div id="tankRows"></div>
+      <div class="avg-mode">
+        <button type="button" id="mode_w" class="sel" onclick="setAvgMode('w')">가중평균 (kg 기준)</button>
+        <button type="button" id="mode_s" onclick="setAvgMode('s')">단순평균</button>
+      </div>
+      <div id="tankSummary" class="tank-sum"></div>
+      <div class="tank-btns">
+        <button type="button" onclick="selectTanks('valid')">값 있는 탱크 모두 선택</button>
+        <button type="button" onclick="selectTanks('none')">선택 해제</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('pepsi')">펩시 <small class="tab-sub">355ml</small></button>
+    <button class="tab" onclick="switchTab('cider')">사이다 <small class="tab-sub">355ml</small></button>
+    <button class="tab" onclick="switchTab('zero')">펩시제로 <small class="tab-sub">355ml</small></button>
+    <button class="tab" onclick="switchTab('n1')">핫식스 <small class="tab-sub">355ml</small></button>
+    <button class="tab" onclick="switchTab('n2')">핫식스 더킹퍼플 <small class="tab-sub">500ml</small></button>
+    <button class="tab" onclick="switchTab('n3')">핫식스 더킹제로 <small class="tab-sub">500ml</small></button>
+  </div>
+
+  <!-- 펩시 -->
+  <div id="pepsi" class="panel active">
+    <div class="section">
+      <h3>시럽 입력 (자동 인식 후 수정 가능)</h3>
+      <div class="grid">
+        <div>
+          <label>시럽 Brix</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="p_brix" class="yellow" value="57.9" step="0.1" oninput="calcPepsi()">
+        </div>
+        <div>
+          <label>시럽 kg</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="p_kg" class="yellow" value="1000" step="1" oninput="calcPepsi()">
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <h3>제품 설정</h3>
+      <div class="grid">
+        <div>
+          <label>제품 Brix</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="p_pbrix" value="10.8" step="0.1" oninput="calcPepsi()">
+        </div>
+        <div>
+          <label>제품 비중</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="p_psg" value="0.98" step="0.001" oninput="calcPepsi()">
+        </div>
+        <div>
+          <label>수율</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="p_yield" value="0.95" step="0.01" oninput="calcPepsi()">
+        </div>
+        <div>
+          <label>캔 용량 (L)</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="p_can" value="0.355" step="0.001" oninput="calcPepsi()">
+        </div>
+        <div>
+          <label>배관 남은 수량 (본)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="p_pipe" class="yellow" value="5846" step="1" oninput="calcPepsi()">
+        </div>
+        <div>
+          <label>파렛트 단수 (차감)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="p_pdeduct" class="yellow" value="0" step="1" oninput="calcPepsi()">
+        </div>
+        <div>
+          <label>DP-FILLER 차감 수량 (본)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="p_dp" value="7500" step="1" oninput="calcPepsi()">
+        </div>
+        <div>
+          <label>단당 수량 (본)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="p_layer" value="399" step="1" oninput="calcPepsi()">
+        </div>
+        <div>
+          <label>파렛트당 단수</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="p_layers" value="17" step="1" oninput="calcPepsi()">
+        </div>
+        <div>
+          <label>시간당 생산량 (본/시간)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="p_rate" value="60000" step="100" oninput="calcPepsi()">
+        </div>
+      </div>
+    </div>
+    <div id="pepsiResult" class="result-box"></div>
+    <div class="share-row"><button type="button" class="share-btn" onclick="shareResult('pepsi', this)">📤 결과 이미지 저장/공유</button></div>
+  </div>
+
+  <!-- 사이다 (펩시와 같은 계산, 제품 Brix 기본값만 다름: 10.25, 현장 기준) -->
+  <div id="cider" class="panel">
+    <div class="section">
+      <h3>시럽 입력 (자동 인식 후 수정 가능)</h3>
+      <div class="grid">
+        <div>
+          <label>시럽 Brix</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="c_brix" class="yellow" value="57.9" step="0.1" oninput="calcCider()">
+        </div>
+        <div>
+          <label>시럽 kg</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="c_kg" class="yellow" value="1000" step="1" oninput="calcCider()">
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <h3>제품 설정</h3>
+      <div class="grid">
+        <div>
+          <label>제품 Brix</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="c_pbrix" value="10.25" step="0.1" oninput="calcCider()">
+        </div>
+        <div>
+          <label>제품 비중</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="c_psg" value="0.98" step="0.001" oninput="calcCider()">
+        </div>
+        <div>
+          <label>수율</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="c_yield" value="0.95" step="0.01" oninput="calcCider()">
+        </div>
+        <div>
+          <label>캔 용량 (L)</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="c_can" value="0.355" step="0.001" oninput="calcCider()">
+        </div>
+        <div>
+          <label>배관 남은 수량 (본)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="c_pipe" class="yellow" value="5846" step="1" oninput="calcCider()">
+        </div>
+        <div>
+          <label>파렛트 단수 (차감)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="c_pdeduct" class="yellow" value="0" step="1" oninput="calcCider()">
+        </div>
+        <div>
+          <label>DP-FILLER 차감 수량 (본)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="c_dp" value="7500" step="1" oninput="calcCider()">
+        </div>
+        <div>
+          <label>단당 수량 (본)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="c_layer" value="399" step="1" oninput="calcCider()">
+        </div>
+        <div>
+          <label>파렛트당 단수</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="c_layers" value="17" step="1" oninput="calcCider()">
+        </div>
+        <div>
+          <label>시간당 생산량 (본/시간)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="c_rate" value="60000" step="100" oninput="calcCider()">
+        </div>
+      </div>
+    </div>
+    <div id="ciderResult" class="result-box"></div>
+    <div class="share-row"><button type="button" class="share-btn" onclick="shareResult('cider', this)">📤 결과 이미지 저장/공유</button></div>
+  </div>
+
+  <!-- 펩시제로 -->
+  <div id="zero" class="panel">
+    <div class="section">
+      <h3>시럽 입력 (자동 인식 후 수정 가능)</h3>
+      <div class="grid">
+        <div>
+          <label>시럽 Brix</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="z_brix" class="yellow" value="2.3" step="0.1" oninput="calcZero()">
+        </div>
+        <div>
+          <label>시럽 kg</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="z_kg" class="yellow" value="1000" step="1" oninput="calcZero()">
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <h3>제품 설정</h3>
+      <div class="grid">
+        <div>
+          <label>제품 Brix</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="z_pbrix" value="0.4" step="0.1" oninput="calcZero()">
+        </div>
+        <div>
+          <label>제품 비중</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="z_psg" value="0.994" step="0.001" oninput="calcZero()">
+        </div>
+        <div>
+          <label>수율</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="z_yield" value="0.98" step="0.01" oninput="calcZero()">
+        </div>
+        <div>
+          <label>캔 용량 (L)</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="z_can" value="0.355" step="0.001" oninput="calcZero()">
+        </div>
+        <div>
+          <label>배관 남은 수량 (본)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="z_pipe" class="yellow" value="6665" step="1" oninput="calcZero()">
+        </div>
+        <div>
+          <label>파렛트 단수 (차감)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="z_pdeduct" class="yellow" value="0" step="1" oninput="calcZero()">
+        </div>
+        <div>
+          <label>DP-FILLER 차감 수량 (본)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="z_dp" value="7500" step="1" oninput="calcZero()">
+        </div>
+        <div>
+          <label>단당 수량 (본)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="z_layer" value="399" step="1" oninput="calcZero()">
+        </div>
+        <div>
+          <label>파렛트당 단수</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="z_layers" value="17" step="1" oninput="calcZero()">
+        </div>
+        <div>
+          <label>시간당 생산량 (본/시간)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="z_rate" value="60000" step="100" oninput="calcZero()">
+        </div>
+      </div>
+    </div>
+    <div id="zeroResult" class="result-box"></div>
+    <div class="share-row"><button type="button" class="share-btn" onclick="shareResult('zero', this)">📤 결과 이미지 저장/공유</button></div>
+  </div>
+
+  <!-- 핫식스 355ml (엑셀 109a53b7…) -->
+  <div id="n1" class="panel">
+    <div class="section">
+      <h3>시럽 입력 (자동 인식 후 수정 가능)</h3>
+      <div class="grid">
+        <div>
+          <label>시럽 Brix</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="n1_brix" class="yellow" value="12.1" step="0.1" oninput="calcNew('n1')">
+        </div>
+        <div>
+          <label>시럽 kg</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="n1_kg" class="yellow" value="1800" step="1" oninput="calcNew('n1')">
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <h3>제품 설정</h3>
+      <div class="grid">
+        <div>
+          <label>제품 Brix</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="n1_pbrix" value="2.35" step="0.1" oninput="calcNew('n1')">
+        </div>
+        <div>
+          <label>제품 비중</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="n1_psg" value="1" step="0.001" oninput="calcNew('n1')">
+        </div>
+        <div>
+          <label>수율</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="n1_yield" value="0.95" step="0.01" oninput="calcNew('n1')">
+        </div>
+        <div>
+          <label>캔 용량 (L)</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="n1_can" value="0.355" step="0.001" oninput="calcNew('n1')">
+        </div>
+        <div>
+          <label>배관 남은 수량 (본) · 420kg</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="n1_pipe" class="yellow" value="2144" step="1" oninput="calcNew('n1')">
+        </div>
+        <div>
+          <label>파렛트 단수 (차감)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="n1_pdeduct" class="yellow" value="0" step="1" oninput="calcNew('n1')">
+        </div>
+        <div>
+          <label>DP-FILLER 차감 수량 (본)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="n1_dp" value="7500" step="1" oninput="calcNew('n1')">
+        </div>
+        <div>
+          <label>단당 수량 (본)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="n1_layer" value="399" step="1" oninput="calcNew('n1')">
+        </div>
+        <div>
+          <label>파렛트당 단수</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="n1_layers" value="17" step="1" oninput="calcNew('n1')">
+        </div>
+        <div>
+          <label>시간당 생산량 (본/시간)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="n1_rate" value="60000" step="100" oninput="calcNew('n1')">
+        </div>
+      </div>
+    </div>
+    <div id="n1Result" class="result-box"></div>
+    <div class="share-row"><button type="button" class="share-btn" onclick="shareResult('n1', this)">📤 결과 이미지 저장/공유</button></div>
+  </div>
+
+  <!-- 핫식스 더킹퍼플 500ml (엑셀 e49e10cd…) -->
+  <div id="n2" class="panel">
+    <div class="section">
+      <h3>시럽 입력 (자동 인식 후 수정 가능)</h3>
+      <div class="grid">
+        <div>
+          <label>시럽 Brix</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="n2_brix" class="yellow" value="12.2" step="0.1" oninput="calcNew('n2')">
+        </div>
+        <div>
+          <label>시럽 kg</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="n2_kg" class="yellow" value="16400" step="1" oninput="calcNew('n2')">
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <h3>제품 설정</h3>
+      <div class="grid">
+        <div>
+          <label>제품 Brix</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="n2_pbrix" value="12.3" step="0.1" oninput="calcNew('n2')">
+        </div>
+        <div>
+          <label>제품 비중</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="n2_psg" value="0.98" step="0.001" oninput="calcNew('n2')">
+        </div>
+        <div>
+          <label>수율</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="n2_yield" value="0.95" step="0.01" oninput="calcNew('n2')">
+        </div>
+        <div>
+          <label>캔 용량 (L)</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="n2_can" value="0.5" step="0.001" oninput="calcNew('n2')">
+        </div>
+        <div>
+          <label>배관 남은 수량 (본) · 400kg</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="n2_pipe" class="yellow" value="3171" step="1" oninput="calcNew('n2')">
+        </div>
+        <div>
+          <label>파렛트 단수 (차감)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="n2_pdeduct" class="yellow" value="0" step="1" oninput="calcNew('n2')">
+        </div>
+        <div>
+          <label>DP-FILLER 차감 수량 (본)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="n2_dp" value="7500" step="1" oninput="calcNew('n2')">
+        </div>
+        <div>
+          <label>단당 수량 (본)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="n2_layer" value="399" step="1" oninput="calcNew('n2')">
+        </div>
+        <div>
+          <label>파렛트당 단수</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="n2_layers" value="12" step="1" oninput="calcNew('n2')">
+        </div>
+        <div>
+          <label>시간당 생산량 (본/시간)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="n2_rate" value="48000" step="100" oninput="calcNew('n2')">
+        </div>
+      </div>
+    </div>
+    <div id="n2Result" class="result-box"></div>
+    <div class="share-row"><button type="button" class="share-btn" onclick="shareResult('n2', this)">📤 결과 이미지 저장/공유</button></div>
+  </div>
+
+  <!-- 핫식스 더킹제로 500ml (엑셀 e0440c66…) -->
+  <div id="n3" class="panel">
+    <div class="section">
+      <h3>시럽 입력 (자동 인식 후 수정 가능)</h3>
+      <div class="grid">
+        <div>
+          <label>시럽 Brix</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="n3_brix" class="yellow" value="12.2" step="0.1" oninput="calcNew('n3')">
+        </div>
+        <div>
+          <label>시럽 kg</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="n3_kg" class="yellow" value="400" step="1" oninput="calcNew('n3')">
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <h3>제품 설정</h3>
+      <div class="grid">
+        <div>
+          <label>제품 Brix</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="n3_pbrix" value="2.34" step="0.1" oninput="calcNew('n3')">
+        </div>
+        <div>
+          <label>제품 비중</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="n3_psg" value="0.98" step="0.001" oninput="calcNew('n3')">
+        </div>
+        <div>
+          <label>수율</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="n3_yield" value="0.95" step="0.01" oninput="calcNew('n3')">
+        </div>
+        <div>
+          <label>캔 용량 (L)</label>
+          <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="n3_can" value="0.5" step="0.001" oninput="calcNew('n3')">
+        </div>
+        <div>
+          <label>배관 남은 수량 (본) · 400kg</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="n3_pipe" class="yellow" value="4043" step="1" oninput="calcNew('n3')">
+        </div>
+        <div>
+          <label>파렛트 단수 (차감)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="n3_pdeduct" class="yellow" value="0" step="1" oninput="calcNew('n3')">
+        </div>
+        <div>
+          <label>DP-FILLER 차감 수량 (본)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="n3_dp" value="7500" step="1" oninput="calcNew('n3')">
+        </div>
+        <div>
+          <label>단당 수량 (본)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="n3_layer" value="399" step="1" oninput="calcNew('n3')">
+        </div>
+        <div>
+          <label>파렛트당 단수</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="n3_layers" value="12" step="1" oninput="calcNew('n3')">
+        </div>
+        <div>
+          <label>시간당 생산량 (본/시간)</label>
+          <input type="text" data-num="i" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="n3_rate" value="48000" step="100" oninput="calcNew('n3')">
+        </div>
+      </div>
+    </div>
+    <div id="n3Result" class="result-box"></div>
+    <div class="share-row"><button type="button" class="share-btn" onclick="shareResult('n3', this)">📤 결과 이미지 저장/공유</button></div>
+  </div>
+
+  <div style="padding: 0 20px 18px;">
+    <p class="note">
+      ※ 사진 인식은 인터넷이 필요합니다 (Tesseract.js 사용).<br>
+      ※ 공장 화면은 복잡해서 인식률이 낮을 수 있습니다. 틀린 숫자는 직접 고쳐주세요.<br>
+      ※ 펩시와 사이다는 같은 식으로 계산하고 제품 Brix 기본값만 다릅니다 (펩시 10.80, 사이다 10.25).<br>
+      ※ 핫식스·핫식스 더킹퍼플·핫식스 더킹제로 탭은 각 엑셀 '배합계산' 시트와 같은 식입니다: 생산 가능 캔 = 당량×10000 ÷ 제품 Brix ÷ 제품 비중 × 수율 ÷ 캔 용량, 합계 = 캔 + 배관, 트레이 = 캔 ÷ 24. 파렛트·단수·잔여 개수는 355ml 탭과 같은 식입니다 (DP-FILLER 7,500 차감, 단당 399개; 파렛트당 단수 355ml 17단, 500ml 12단 = 4,788개). 핫식스 탭의 캔 용량 기본값은 355ml(0.355)입니다 (엑셀 C16에는 0.5로 적혀 있음).<br>
+      ※ 여러 탱크 선택 시 Brix는 기본 kg 가중평균(Σ Brix×kg ÷ Σ kg)입니다.<br>
+      ※ 입력값(탱크 선택·Brix·kg, 평균 방식, 시럽·제품 설정, 현재 탭)은 이 기기에 자동 저장됩니다.<br>
+      ※ 결과 이미지 공유(카카오톡·문자 등)는 https 주소로 열었을 때 동작합니다. 공유가 안 되면 이미지가 저장(다운로드)됩니다.<br>
+      ※ 파렛트·단수·잔여 개수는 엑셀(배합계산 C31·C32·E32)과 같은 식입니다: (합계 − DP-FILLER 차감 수량) ÷ 단당 수량, 파렛트 단수(차감)만큼 빼고 파렛트당 단수로 나눔.<br>
+      ※ 남은 생산 시간 = 합계(본) ÷ 시간당 생산량 (2호 라인 기본 355ml 60,000본/시간, 500ml 48,000본/시간).<br>
+      ※ 계산식은 엑셀과 동일합니다. 회사 사람들과 파일을 공유해서 쓰세요.
+    </p>
+    <div style="text-align:right; margin-top:10px;"><button type="button" id="resetSaved" class="reset-btn" onclick="resetSavedValues()">↺ 저장값 초기화</button></div>
+  </div>
+  <footer class="site-footer">제작: 명섭</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+let currentTab = 'pepsi';
+
+function showPhoto(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = document.getElementById('photoPreview');
+    img.src = e.target.result;
+    img.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+/*OCR-CORE-START*/
+// ===== shared OCR core (pure JS, no DOM) =====
+function isYellow(r,g,b){var m=Math.min(r,g);return m>105 && (m-b)>40 && Math.abs(r-g)<55;}
+// find yellow LCD fields. rgba: Uint8(Clamped)Array, w,h. returns [{x,y,w,h}] in image coords
+function findYellowFields(rgba,W,H){
+  var S=Math.max(1,Math.round(Math.max(W,H)/1400)); // work grid step
+  var gw=Math.floor(W/S), gh=Math.floor(H/S), mask=new Uint8Array(gw*gh);
+  for(var y=0;y<gh;y++)for(var x=0;x<gw;x++){var i=((y*S)*W+x*S)*4;if(isYellow(rgba[i],rgba[i+1],rgba[i+2]))mask[y*gw+x]=1;}
+  // connected components
+  var lab=new Int32Array(gw*gh),comps=[],stack=[];
+  for(var p=0;p<gw*gh;p++){ if(!mask[p]||lab[p])continue;
+    var c={x0:1e9,y0:1e9,x1:-1,y1:-1,n:0,id:comps.length+1};lab[p]=c.id;stack.push(p);
+    while(stack.length){var q=stack.pop(),qx=q%gw,qy=(q/gw)|0;c.n++;
+      if(qx<c.x0)c.x0=qx;if(qx>c.x1)c.x1=qx;if(qy<c.y0)c.y0=qy;if(qy>c.y1)c.y1=qy;
+      var nb=[q-1,q+1,q-gw,q+gw];for(var k=0;k<4;k++){var n=nb[k];if(n<0||n>=gw*gh)continue;if(k<2&&((n/gw)|0)!==qy)continue;if(mask[n]&&!lab[n]){lab[n]=c.id;stack.push(n);}}}
+    comps.push(c);}
+  var fields=[];
+  comps.forEach(function(c){
+    var bw=c.x1-c.x0+1,bh=c.y1-c.y0+1;if(c.n<40||bw<12||bh<4)return;
+    if(c.n/(bw*bh)<0.25)return;
+    // split vertically into bands by row fill ratio (stacked fields joined by thin borders)
+    var rows=[];for(var y=c.y0;y<=c.y1;y++){var cnt=0;for(var x=c.x0;x<=c.x1;x++)if(lab[y*gw+x]===c.id)cnt++;rows.push(cnt/bw);}
+    var bands=[],st=-1;
+    for(var r=0;r<=rows.length;r++){var on=r<rows.length&&rows[r]>0.35;if(on&&st<0)st=r;if(!on&&st>=0){bands.push([st,r-1]);st=-1;}}
+    bands.forEach(function(b){
+      var y0=c.y0+b[0],y1=c.y0+b[1],h=y1-y0+1;if(h<4)return;
+      // horizontal extent within band
+      var xs0=1e9,xs1=-1;for(var x=c.x0;x<=c.x1;x++){var cnt=0;for(var y=y0;y<=y1;y++)if(lab[y*gw+x]===c.id)cnt++;if(cnt/h>0.3){if(x<xs0)xs0=x;xs1=x;}}
+      var w=xs1-xs0+1;if(w<h*1.8)return; // need wide boxes (skip C/A buttons)
+      fields.push({x:xs0*S,y:y0*S,w:w*S,h:h*S});
+    });
+  });
+  // merge horizontally adjacent pieces of the same field (split by glyphs / glare)
+  fields.sort(function(a,b){return a.x-b.x;});
+  for(var i=0;i<fields.length;i++){var a=fields[i];if(!a)continue;
+    for(var j=0;j<fields.length;j++){var b=fields[j];if(!b||i===j)continue;
+      var ov=Math.min(a.y+a.h,b.y+b.h)-Math.max(a.y,b.y),gap=b.x-(a.x+a.w);
+      if(gap>-a.h&&gap<Math.max(a.h,b.h)*0.6&&ov>0.25*Math.min(a.h,b.h)&&b.x>a.x){
+        var nx=a.x,ny=Math.min(a.y,b.y),nr=Math.max(a.x+a.w,b.x+b.w),nb=Math.max(a.y+a.h,b.y+b.h);
+        // keep height of the taller (main) piece
+        var main=a.h>=b.h?a:b;a.w=nr-nx;a.y=main.y;a.h=main.h;fields[j]=null;j=-1;}}}
+  fields=fields.filter(function(f){return f&&f.w>=f.h*1.8&&f.h>=8;});
+  return fields;
+}
+// crop + grayscale + upscale + otsu threshold -> {data:Uint8ClampedArray rgba, w, h} with dark text on white
+function prepField(rgba,W,H,f,targetH,blur,clearBorder){
+  targetH=targetH||72;if(blur==null)blur=0.03;
+  var ix=Math.round(f.h*0.08), iy=Math.round(f.h*0.08);
+  var x0=Math.max(0,f.x+ix),y0=Math.max(0,f.y+iy),x1=Math.min(W,f.x+f.w-ix),y1=Math.min(H,f.y+f.h-iy);
+  var cw=x1-x0,ch=y1-y0,sc=targetH/ch,ow=Math.max(1,Math.round(cw*sc)),oh=targetH,pad=Math.round(targetH*0.4);
+  var g=new Float32Array(ow*oh),hist=new Array(256).fill(0);
+  for(var y=0;y<oh;y++)for(var x=0;x<ow;x++){ // bilinear
+    var sx=x0+(x+0.5)/sc-0.5,sy=y0+(y+0.5)/sc-0.5,xa=Math.max(x0,Math.min(x1-1,Math.floor(sx))),ya=Math.max(y0,Math.min(y1-1,Math.floor(sy)));
+    var xb=Math.min(x1-1,xa+1),yb=Math.min(y1-1,ya+1),fx=Math.max(0,Math.min(1,sx-xa)),fy=Math.max(0,Math.min(1,sy-ya));
+    function L(px,py){var i=(py*W+px)*4;return 0.299*rgba[i]+0.587*rgba[i+1]+0.114*rgba[i+2];}
+    var v=(L(xa,ya)*(1-fx)+L(xb,ya)*fx)*(1-fy)+(L(xa,yb)*(1-fx)+L(xb,yb)*fx)*fy;
+    g[y*ow+x]=v;hist[Math.max(0,Math.min(255,v|0))]++;}
+  // box blur to kill screen moire / LCD dot pattern
+  var r=Math.max(1,Math.round(targetH*blur)),tmp=new Float32Array(ow*oh);
+  if(blur>0){for(y=0;y<oh;y++)for(x=0;x<ow;x++){var s2=0,n2=0;for(var d=-r;d<=r;d++){var xx=x+d;if(xx>=0&&xx<ow){s2+=g[y*ow+xx];n2++;}}tmp[y*ow+x]=s2/n2;}
+   hist.fill(0);for(y=0;y<oh;y++)for(x=0;x<ow;x++){var s3=0,n3=0;for(d=-r;d<=r;d++){var yy=y+d;if(yy>=0&&yy<oh){s3+=tmp[yy*ow+x];n3++;}}g[y*ow+x]=s3/n3;hist[Math.max(0,Math.min(255,(s3/n3)|0))]++;}}
+  // otsu
+  var tot=ow*oh,sum=0;for(var t=0;t<256;t++)sum+=t*hist[t];var sB=0,wB=0,best=0,th=128;
+  for(t=0;t<256;t++){wB+=hist[t];if(!wB)continue;var wF=tot-wB;if(!wF)break;sB+=t*hist[t];var mB=sB/wB,mF=(sum-sB)/wF,bt=wB*wF*(mB-mF)*(mB-mF);if(bt>best){best=bt;th=t;}}
+  var bin=new Uint8Array(ow*oh);for(var q=0;q<ow*oh;q++)bin[q]=g[q]<th?1:0;
+  if(clearBorder){ // remove dark frame connected to crop edges (keeps text inside a light box)
+    var stk=[];for(x=0;x<ow;x++){stk.push(x,(oh-1)*ow+x);}for(y=0;y<oh;y++){stk.push(y*ow,y*ow+ow-1);}
+    while(stk.length){var p=stk.pop();if(!bin[p])continue;bin[p]=0;var px=p%ow;if(px>0)stk.push(p-1);if(px<ow-1)stk.push(p+1);if(p>=ow)stk.push(p-ow);if(p<ow*(oh-1))stk.push(p+ow);}}
+  var OW=ow+2*pad,OH=oh+2*pad,out=new Uint8ClampedArray(OW*OH*4).fill(255);
+  for(y=0;y<oh;y++)for(x=0;x<ow;x++){var v2=bin[y*ow+x]?0:255,o=((y+pad)*OW+x+pad)*4;out[o]=out[o+1]=out[o+2]=v2;}
+  // remove black blobs touching crop border (frame remnants): flood from border pixels of the inner area
+  return {data:out,w:OW,h:OH};
+}
+
+// ---- text helpers ----
+function norm(t){return (t||'').replace(/\s+/g,'').replace(/[Oo]/g,'0').replace(/,/g,'.');}
+function fieldKind(t){ // guess field type from OCR text
+  var s=norm(t);
+  if(/\d:\d|\d\d[.:]\d\d[.:]\d\d/.test(s))return 'time';
+  if(/\d[.]?\d\dp/i.test(s)&&/p[kKhH]?$/.test(s))return 'ph';
+  if(/\d[.]?\d\d(b|6x|0x|bx)/i.test(s))return 'bx';
+  if(/\d\.\d[^\d]*C$/.test(s))return 'C';
+  if(/\d(k|kg|kq|k9|kc)$/i.test(s)||/\dkg/i.test(s))return 'kg';
+  if(/\dL$/.test(s))return 'L';
+  return null;
+}
+var KIND_OFF={time:0,ph:1,bx:2,C:3,L:4,kg:5}; // HMI tank stack order
+function brixVal(t){var s=norm(t),m=s.match(/(\d{1,2})\.?(\d{2})/);return m?parseFloat(m[1]+'.'+m[2]):null;}
+function kgVal(t){var s=norm(t),m=s.match(/^\D{0,2}(\d{1,6})/);return m?parseInt(m[1],10):null;}
+function vote(arr){var c={},best=null,bn=0;arr.forEach(function(v){if(v==null||(typeof v==="number"&&isNaN(v)))return;c[v]=(c[v]||0)+1;if(c[v]>bn){bn=c[v];best=v;}});return best;}
+// group fields into vertical stacks (one per tank)
+function groupStacks(fields){
+  var fs=fields.slice().sort(function(a,b){return a.y-b.y;}),stacks=[];
+  fs.forEach(function(f){
+    var cx=f.x+f.w/2,hit=null;
+    stacks.forEach(function(st){var l=st[st.length-1];if(Math.abs((l.x+l.w/2)-cx)<Math.max(l.w,f.w)*0.35&&f.y>l.y&&f.y-(l.y+l.h)<f.h*0.7)hit=st;});
+    if(hit)hit.push(f);else stacks.push([f]);
+  });
+  return stacks;
+}
+function estimateTilt(fields){
+  var sl=[];groupStacks(fields).forEach(function(st){if(st.length<4)return;
+    var n=st.length,mx=0,my=0;st.forEach(function(f){mx+=f.x+f.w/2;my+=f.y+f.h/2;});mx/=n;my/=n;
+    var sxy=0,syy=0;st.forEach(function(f){var dy=f.y+f.h/2-my;sxy+=dy*(f.x+f.w/2-mx);syy+=dy*dy;});if(syy>0)sl.push(sxy/syy);});
+  if(!sl.length)return 0;sl.sort(function(a,b){return a-b;});return Math.atan(sl[sl.length>>1]);}
+// rotate image content by -ang (radians) around centre, bilinear, grey fill
+function rotateRGBA(src,W,H,ang){
+  var out=new Uint8ClampedArray(W*H*4),c=Math.cos(ang),s=Math.sin(ang),cx=W/2,cy=H/2;
+  for(var y=0;y<H;y++)for(var x=0;x<W;x++){
+    var dx=x-cx,dy=y-cy,sx=c*dx-s*dy+cx,sy=s*dx+c*dy+cy,o=(y*W+x)*4;
+    if(sx<0||sy<0||sx>=W-1||sy>=H-1){out[o]=out[o+1]=out[o+2]=180;out[o+3]=255;continue;}
+    var xa=sx|0,ya=sy|0,fx=sx-xa,fy=sy-ya,i00=(ya*W+xa)*4,i10=i00+4,i01=i00+W*4,i11=i01+4;
+    for(var k=0;k<3;k++)out[o+k]=(src[i00+k]*(1-fx)+src[i10+k]*fx)*(1-fy)+(src[i01+k]*(1-fx)+src[i11+k]*fx)*fy;
+    out[o+3]=255;}
+  return out;}
+// main pipeline. recognize(prep,psm) -> Promise<string>. progress(msg)
+async function analyzeHMI(rgba,W,H,recognize,progress){
+  progress=progress||function(){};
+  var fields=findYellowFields(rgba,W,H);
+  if(!fields.length)return {fields:[],tanks:[]};
+  // deskew: tank stacks are vertical columns; estimate tilt from the drift of field centres
+  var ang=estimateTilt(fields);
+  if(Math.abs(ang)>0.026&&Math.abs(ang)<0.35){progress('기울기 보정 중...');
+    rgba=rotateRGBA(rgba,W,H,-ang);fields=findYellowFields(rgba,W,H);}
+  // pass 1: every yellow field, raw-line mode
+  for(var i=0;i<fields.length;i++){progress('1차 인식 '+(i+1)+'/'+fields.length);
+    fields[i].t=await recognize(prepField(rgba,W,H,fields[i],56,0.04),'13');fields[i].kind=fieldKind(fields[i].t);}
+  var stacks=groupStacks(fields).filter(function(st){return st.length>=4;});
+  var tanks=[];
+  for(var si=0;si<stacks.length;si++){var st=stacks[si];
+    // vote for index of the "time" row using every recognised kind
+    var bases=[];st.forEach(function(f,i){if(f.kind)bases.push(i-KIND_OFF[f.kind]);});
+    var base=vote(bases);if(base==null)continue;
+    var bf=st[base+2],kf=st[base+5];if(!bf||!kf)continue;
+    tanks.push({stack:st,base:base,bf:bf,kf:kf,x:st[0].x,y:st[0].y,w:st[0].w,h:st[0].h});
+  }
+  // pass 2: re-read brix & kg fields with extra variants and vote
+  var n=0;
+  for(var ti=0;ti<tanks.length;ti++){var tk=tanks[ti];
+    progress('정밀 인식 '+(ti+1)+'/'+tanks.length);
+    var bv=[brixVal(tk.bf.t)],kv=[kgVal(tk.kf.t)];
+    var variants=[[72,0.04],[40,0.04],[96,0.02]];
+    for(var v=0;v<variants.length;v++){
+      bv.push(brixVal(await recognize(prepField(rgba,W,H,tk.bf,variants[v][0],variants[v][1]),'13')));
+      kv.push(kgVal(await recognize(prepField(rgba,W,H,tk.kf,variants[v][0],variants[v][1]),'13')));
+    }
+    tk.brix=vote(bv);tk.kg=vote(kv);tk.brixVotes=bv;tk.kgVotes=kv;
+    // tank label (white box "TK8xx" above the stack)
+    try{var top=tk.stack[tk.base]||tk.stack[0],lab={x:top.x-Math.round(top.w*0.08),y:Math.round(top.y-top.h*3.2),w:Math.round(top.w*1.16),h:Math.round(top.h*1.9)};
+      if(lab.y>0){var names=[],raws=[],LV=[[80,0.02,'7'],[110,0.02,'7'],[64,0.03,'7'],[80,0.02,'6']];
+        for(var li=0;li<LV.length;li++){var lt=norm(await recognize(prepField(rgba,W,H,lab,LV[li][0],LV[li][1],true),LV[li][2],true));raws.push(lt);
+          var m=lt.match(/T?K(\d{3})/i);if(m)names.push('TK'+m[1]);}
+        var nm=vote(names),nc=names.filter(function(x){return x===nm;}).length;tk.name=nc>=3?nm:null;tk.nameGuess=nm;tk.labelRaw=raws.join('|');}}catch(e){}
+  }
+  return {fields:fields,tanks:tanks,tilt:ang};
+}
+// usable candidates (ignore empty tanks: 0.00 brix or ~0 kg)
+function tankCandidates(res){
+  return res.tanks.filter(function(t){return t.brix!=null&&t.brix>0.05&&t.brix<80&&t.kg!=null&&t.kg>=50;})
+    .sort(function(a,b){return a.x-b.x;});
+}
+// fallback for non-HMI photos: parse free text (tolerant)
+function parseFreeText(text){
+  var s=text.replace(/[Oo]/g,'0').replace(/(\d),(\d)/g,'$1.$2'),brix=[],kg=[],m;
+  var rb=/(\d{1,2})\s?[.,]?\s?(\d{2})\s*(?:b|6)\s*[xX×]?/gi;while(m=rb.exec(s)){var v=parseFloat(m[1]+'.'+m[2]);if(v>0.05&&v<80)brix.push(v);}
+  var rk=/(\d{2,6})\s*(?:kg|kq|k9|kc|k)\b/gi;while(m=rk.exec(s)){var k=parseInt(m[1],10);if(k>=50)kg.push(k);}
+  return {brix:brix,kg:kg};
+}
+// map recognised tank stacks (left->right) to plant slots 1..6 (TK801..TK806)
+// anchors: confidently read TK80n labels (weight 2) or best-guess TK80n labels (weight 1); else left-to-right order
+function assignSlots(tanks,nSlots){
+  nSlots=nSlots||6;var ts=tanks.slice().sort(function(a,b){return a.x-b.x;}),score={};
+  ts.forEach(function(t,r){[[t.name,2],[t.nameGuess,1]].forEach(function(p){var m=p[0]&&String(p[0]).match(/^TK80([1-9])$/);
+    if(m){var off=parseInt(m[1],10)-1-r;score[off]=(score[off]||0)+p[1];}});});
+  var off=null,best=0;Object.keys(score).forEach(function(k){var o=parseInt(k,10);if(o<0||o+ts.length>nSlots)return;if(score[k]>best){best=score[k];off=o;}});
+  if(off==null)off=0; // no usable label: assume leftmost visible tank is 1번
+  if(ts.length>nSlots)ts=ts.slice(ts.length-nSlots); // too many stacks: keep the right-most nSlots
+  return ts.map(function(t,r){return {slot:off+r+1,tank:t};}).filter(function(a){return a.slot>=1&&a.slot<=nSlots;});
+}
+if(typeof module!=='undefined')module.exports={isYellow:isYellow,findYellowFields:findYellowFields,prepField:prepField,fieldKind:fieldKind,analyzeHMI:analyzeHMI,tankCandidates:tankCandidates,parseFreeText:parseFreeText,brixVal:brixVal,kgVal:kgVal,assignSlots:assignSlots};
+
+/*OCR-CORE-END*/
+
+let ocrWorker = null, ocrParams = '';
+async function getWorker(status) {
+  if (ocrWorker) return ocrWorker;
+  status.textContent = '인식 엔진 준비 중... (처음 한 번은 시간이 걸립니다)';
+  ocrWorker = await Tesseract.createWorker('eng', 1, {
+    logger: m => {
+      if (m.status && m.status.indexOf('loading') >= 0) status.textContent = '인식 엔진 다운로드 중... ' + Math.round((m.progress || 0) * 100) + '%';
+    }
+  });
+  return ocrWorker;
+}
+async function ocrRecognize(prep, psm, isLabel) {
+  const wl = isLabel ? 'TK0123456789' : '0123456789.:bxkgLpHC';
+  const key = psm + '|' + wl;
+  if (key !== ocrParams) { await ocrWorker.setParameters({ tessedit_pageseg_mode: psm, tessedit_char_whitelist: wl }); ocrParams = key; }
+  const cv = document.createElement('canvas'); cv.width = prep.w; cv.height = prep.h;
+  cv.getContext('2d').putImageData(new ImageData(prep.data, prep.w, prep.h), 0, 0);
+  const r = await ocrWorker.recognize(cv);
+  return (r.data.text || '').trim();
+}
+function loadImageData(file, maxDim) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const sc = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.round(img.naturalWidth * sc), h = Math.round(img.naturalHeight * sc);
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      const ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      resolve({ data: ctx.getImageData(0, 0, w, h).data, w: w, h: h, canvas: cv });
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('사진을 열 수 없습니다')); };
+    img.src = url;
+  });
+}
+// ===== 탱크 선택 (1~6번, TK801~TK806) =====
+const N_TANKS = 6;
+const tankSel = { pepsi: new Set(), cider: new Set(), zero: new Set(), n1: new Set(), n2: new Set(), n3: new Set() };   // 탭마다 따로 선택
+let avgMode = 'w';                                     // 'w' = kg 가중평균, 's' = 단순평균
+const TAB_NAME = { pepsi: '펩시 355ml', cider: '사이다 355ml', zero: '펩시제로 355ml', n1: '핫식스 355ml', n2: '핫식스 더킹퍼플 500ml', n3: '핫식스 더킹제로 500ml' };
+const TAB_PRE = { pepsi: 'p_', cider: 'c_', zero: 'z_', n1: 'n1_', n2: 'n2_', n3: 'n3_' };
+const FILE_TAG = { pepsi: 'pepsi_355ml', cider: 'cider_355ml', zero: 'pepsizero_355ml', n1: 'hotsix_355ml', n2: 'hotsix_kingpurple_500ml', n3: 'hotsix_kingzero_500ml' };
+const NEW_TABS = ['n1', 'n2', 'n3'];
+function buildTankRows() {
+  const box = document.getElementById('tankRows');
+  let h = '';
+  for (let i = 1; i <= N_TANKS; i++) {
+    h += `<div class="tank-row" id="trow${i}">
+      <label class="tank-pick"><input type="checkbox" id="tsel${i}" onchange="toggleTank(${i}, this.checked)"><span>${i}번 탱크<small>TK80${i}</small></span></label>
+      <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="tbrix${i}" step="0.01" placeholder="Brix" oninput="tankValueChanged()">
+      <input type="text" data-num="d" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off" id="tkg${i}" step="1" placeholder="kg" oninput="tankValueChanged()">
+    </div>`;
+  }
+  box.innerHTML = h;
+}
+function tankVal(i) {
+  const b = parseFloat(document.getElementById('tbrix' + i).value), k = parseFloat(document.getElementById('tkg' + i).value);
+  return { brix: isNaN(b) ? null : b, kg: isNaN(k) ? null : k };
+}
+function setTank(i, brix, kg) {
+  document.getElementById('tbrix' + i).value = (brix == null ? '' : brix);
+  document.getElementById('tkg' + i).value = (kg == null ? '' : kg);
+}
+function tankHasValue(i) { const v = tankVal(i); return v.brix != null && v.brix > 0.05 && v.kg != null && v.kg >= 50; }
+function combineTanks(tab) {
+  const ids = [...tankSel[tab]].sort((a, b) => a - b);
+  let sumKg = 0, sumBK = 0, sumB = 0, nB = 0;
+  ids.forEach(i => { const v = tankVal(i), b = v.brix || 0, k = v.kg || 0; sumKg += k; sumBK += b * k; if (v.brix != null) { sumB += b; nB++; } });
+  const simple = nB ? sumB / nB : null;
+  const weighted = sumKg > 0 ? sumBK / sumKg : simple;   // kg 합이 0이면 단순평균으로 대체
+  return { ids, sumKg, weighted, simple, brix: avgMode === 'w' ? weighted : simple };
+}
+function recalc(tab) { if (tab === 'pepsi') calcPepsi(); else if (tab === 'cider') calcCider(); else if (tab === 'zero') calcZero(); else calcNew(tab); }
+// 선택한 탱크 합계/평균을 해당 탭의 시럽 Brix / kg 에 넣기 (선택이 없으면 그 탭 입력은 건드리지 않음)
+function applyTanks(tab) {
+  const c = combineTanks(tab);
+  if (!c.ids.length) return c;
+  const pre = TAB_PRE[tab];
+  document.getElementById(pre + 'brix').value = c.brix != null ? c.brix.toFixed(2) : '';
+  document.getElementById(pre + 'kg').value = Math.round(c.sumKg);
+  recalc(tab);
+  return c;
+}
+function renderTankPanel() {
+  for (let i = 1; i <= N_TANKS; i++) {
+    const on = tankSel[currentTab].has(i);
+    document.getElementById('tsel' + i).checked = on;
+    document.getElementById('trow' + i).classList.toggle('on', on);
+  }
+  document.getElementById('tankTabName').textContent = '· 현재 탭: ' + TAB_NAME[currentTab];
+  document.getElementById('mode_w').classList.toggle('sel', avgMode === 'w');
+  document.getElementById('mode_s').classList.toggle('sel', avgMode === 's');
+  const c = combineTanks(currentTab), sum = document.getElementById('tankSummary');
+  if (!c.ids.length) { sum.innerHTML = '선택된 탱크 없음 <small>(시럽 Brix / kg 을 직접 입력하거나 탱크를 선택하세요)</small>'; return; }
+  const f = v => v == null ? '-' : v.toFixed(2);
+  sum.innerHTML = `선택: ${c.ids.map(i => i + '번').join(', ')} · 합계 ${Math.round(c.sumKg).toLocaleString()}kg · 평균 Brix ${f(c.brix)}` +
+    `<br><small>가중평균(kg 기준) ${f(c.weighted)} / 단순평균 ${f(c.simple)} → ${avgMode === 'w' ? '가중평균' : '단순평균'} 사용 (${TAB_NAME[currentTab]} 탭에 입력됨)</small>`;
+}
+function toggleTank(i, on) {
+  if (on) tankSel[currentTab].add(i); else tankSel[currentTab].delete(i);
+  applyTanks(currentTab); renderTankPanel();
+}
+function tankValueChanged() { Object.keys(tankSel).forEach(applyTanks); renderTankPanel(); }
+function setAvgMode(m) { avgMode = m; try { localStorage.setItem('pepsiCalc.avgMode', m); } catch (e) {} Object.keys(tankSel).forEach(applyTanks); renderTankPanel(); saveState(); }
+function selectTanks(what) {
+  tankSel[currentTab].clear();
+  if (what === 'valid') for (let i = 1; i <= N_TANKS; i++) if (tankHasValue(i)) tankSel[currentTab].add(i);
+  applyTanks(currentTab); renderTankPanel(); saveState();
+}
+// 사진 인식 결과 → 6개 탱크 칸 (현재 탭 선택 초기화, 값 있는 탱크가 1개면 자동 선택)
+function fillTanksFromOCR(slots) {
+  for (let i = 1; i <= N_TANKS; i++) setTank(i, null, null);
+  slots.forEach(s => setTank(s.slot, s.brix, s.kg));
+  tankSel[currentTab].clear();
+  const valid = [];
+  for (let i = 1; i <= N_TANKS; i++) if (tankHasValue(i)) valid.push(i);
+  if (valid.length === 1) tankSel[currentTab].add(valid[0]);
+  Object.keys(tankSel).forEach(applyTanks);   // 다른 탭에 선택된 탱크가 있으면 새 값으로 갱신
+  renderTankPanel();
+  saveState();   // 사진 인식으로 채운 값도 저장
+  return valid;
+}
+// ===== 제품 설정 저장 (localStorage) =====
+const SETTING_IDS = ['p_pbrix', 'p_psg', 'p_yield', 'p_can', 'p_pipe', 'z_pbrix', 'z_psg', 'z_yield', 'z_can', 'z_pipe',
+  'p_pdeduct', 'p_dp', 'p_layer', 'p_layers', 'p_rate', 'z_pdeduct', 'z_dp', 'z_layer', 'z_layers', 'z_rate'];
+// ===== 파렛트 / 단수 (엑셀 배합계산 C31·C32·E32 그대로) =====
+//   C31 = INT((ROUNDDOWN((C26-7500)/399,0)-C29)/17)+MOD(ROUNDDOWN((C26-7500)/399,0)-C29,17)/100
+//   C32 = INT(C31)&"파렛트 "&ROUND(MOD(C31,1)*100,0)&"단"
+//   E32 = INT(MOD(C26-7500-C29*399,399))&"개"      (C26 = 합계(본) 소수 포함, C29 = 파렛트 단수 차감)
+function xlINT(x) { return Math.floor(x); }
+function xlROUNDDOWN0(x) { return x < 0 ? Math.ceil(x) : Math.floor(x); }      // 0 쪽으로 버림
+function xlMOD(a, b) { return a - b * Math.floor(a / b); }                      // 결과 부호 = 나누는 수
+function xlROUND0(x) { return x < 0 ? -Math.round(-x) : Math.round(x); }        // .5 는 0에서 먼 쪽
+function excelPallet(c26, c29, dp, perLayer, layers) {
+  const n = xlROUNDDOWN0((c26 - dp) / perLayer) - c29;
+  const c31 = xlINT(n / layers) + xlMOD(n, layers) / 100;
+  const pallets = xlINT(c31), dan = xlROUND0(xlMOD(c31, 1) * 100);
+  const rem = xlINT(xlMOD(c26 - dp - c29 * perLayer, perLayer));
+  return { c31, pallets, dan, rem, c32: pallets + '파렛트 ' + dan + '단', e32: rem + '개' };
+}
+function numOrNull(id) { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? null : v; }
+// 남은 생산 시간: 화면의 합계(본) = floor(캔+배관) ÷ 시간당 생산량
+function hoursText(totalBon, rate) {
+  if (!rate || rate <= 0) return '-';
+  const h = totalBon / rate, mins = Math.round(h * 60);
+  return `${Math.floor(mins / 60)}시간 ${mins % 60}분 (${h.toFixed(2)}시간)`;
+}
+function line2Rows(pre, total) {
+  const c29 = numOrNull(pre + 'pdeduct') || 0, dp = numOrNull(pre + 'dp'), per = numOrNull(pre + 'layer'), lay = numOrNull(pre + 'layers');
+  let pal = '-', rem = '-';
+  if (dp != null && per && lay) {
+    const r = excelPallet(total, c29, dp, per, lay);
+    pal = r.c32 + (total < dp ? ' <small>(합계가 차감 수량보다 적음 · 엑셀 계산 그대로)</small>' : '');
+    rem = r.e32;
+  }
+  return `<div class="result-row"><span>파렛트</span><span class="highlight">${pal}</span></div>
+    <div class="result-row"><span>잔여 개수</span><span>${rem}</span></div>
+    <div class="result-row"><span>남은 생산 시간 (2호 라인)</span><span class="highlight">${hoursText(Math.floor(total), numOrNull(pre + 'rate'))}</span></div>`;
+}
+function loadSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('pepsiCalc.settings') || '{}');
+    SETTING_IDS.forEach(id => { if (saved[id] != null && saved[id] !== '') document.getElementById(id).value = saved[id]; });
+    const m = localStorage.getItem('pepsiCalc.avgMode'); if (m === 'w' || m === 's') avgMode = m;
+  } catch (e) {}
+}
+function saveSettings() {
+  try { const o = {}; SETTING_IDS.forEach(id => { o[id] = document.getElementById(id).value; }); localStorage.setItem('pepsiCalc.settings', JSON.stringify(o)); } catch (e) {}
+}
+async function handlePhoto(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  showPhoto(file);
+  const status = document.getElementById('ocrStatus');
+  status.textContent = '사진에서 숫자를 읽는 중...';
+  try {
+    if (typeof Tesseract === 'undefined') {
+      status.textContent = '인식 라이브러리 로딩 실패. 인터넷 연결을 확인하세요.';
+      return;
+    }
+    await getWorker(status);
+    const img = await loadImageData(file, 3200);
+    const res = await analyzeHMI(img.data, img.w, img.h, ocrRecognize, msg => { status.textContent = '인식 중... ' + msg; });
+    console.log('OCR 노란칸: ' + JSON.stringify(res.fields.map(f => f.t)));
+    console.log('OCR 탱크: ' + JSON.stringify(res.tanks.map(t => ({ name: t.name, guess: t.nameGuess, brix: t.brix, kg: t.kg, bv: t.brixVotes, kv: t.kgVotes }))));
+    input.value = '';
+    if (res.tanks.length) {
+      const slots = assignSlots(res.tanks, N_TANKS).map(a => ({ slot: a.slot, brix: a.tank.brix, kg: a.tank.kg }));
+      console.log('OCR 슬롯: ' + JSON.stringify(slots));
+      const valid = fillTanksFromOCR(slots);
+      if (valid.length === 1) {
+        status.textContent = `[${TAB_NAME[currentTab]}] ${valid[0]}번 탱크 입력 완료 → Brix: ${tankVal(valid[0]).brix} / kg: ${tankVal(valid[0]).kg} (틀리면 직접 수정하세요)`;
+      } else if (valid.length > 1) {
+        status.textContent = `탱크 ${slots.length}개 인식 (값 있는 탱크: ${valid.map(i => i + '번').join(', ')}). 아래에서 계산할 탱크를 선택하세요 (현재 탭: ${TAB_NAME[currentTab]}).`;
+      } else {
+        status.textContent = `탱크 ${slots.length}개 인식, 값 있는 탱크가 없습니다. 아래 목록에서 직접 확인/입력하세요.`;
+      }
+      return;
+    }
+    // 노란 숫자칸을 못 찾은 경우: 전체 사진을 흑백 보정 후 일반 인식
+    status.textContent = '탱크 칸을 못 찾아 전체 인식 중...';
+    const prep = prepField(img.data, img.w, img.h, { x: 0, y: 0, w: img.w, h: img.h }, Math.min(2400, Math.max(img.h, img.h * 2)), 0.002, false);
+    await ocrWorker.setParameters({ tessedit_pageseg_mode: '11', tessedit_char_whitelist: '0123456789.,:bxBXkgKGLpH' }); ocrParams = '';
+    const cv = document.createElement('canvas'); cv.width = prep.w; cv.height = prep.h;
+    cv.getContext('2d').putImageData(new ImageData(prep.data, prep.w, prep.h), 0, 0);
+    const text = (await ocrWorker.recognize(cv)).data.text || '';
+    console.log('OCR 전체:', text);
+    const p = parseFreeText(text);
+    const brix = p.brix.length ? p.brix[0] : null, kg = p.kg.length ? p.kg[0] : null;
+    if (brix == null && kg == null) { status.textContent = '인식 완료. (숫자를 잘 못 찾았습니다. 직접 입력해 주세요)'; return; }
+    fillTanksFromOCR([{ slot: 1, brix: brix, kg: kg }]);
+    if (!tankSel[currentTab].has(1)) { tankSel[currentTab].add(1); applyTanks(currentTab); renderTankPanel(); }
+    saveState();
+    status.textContent = `[${TAB_NAME[currentTab]}] 1번 탱크 칸에 입력 → Brix: ${brix != null ? brix : '-'} / kg: ${kg != null ? kg : '-'} (위치가 다르면 맞는 탱크 칸으로 옮겨 적으세요)`;
+  } catch (err) {
+    status.textContent = '인식 실패: ' + (err.message || '알 수 없는 오류');
+    console.error(err);
+  }
+}
+
+function getSG(brix) {
+  if (brix <= 0) return 1.0;
+  const exact = {0:1, 0.4:1.0016, 2.3:1.009, 10.4:1.0417, 10.8:1.0433, 12.1:1.0488, 12.2:1.0492, 55.5:1.2629, 57.9:1.2768};
+  const rounded = Math.round(brix * 10) / 10;
+  if (exact[rounded] !== undefined) return exact[rounded];
+  if (brix < 20) return 1 + (brix * 0.004);
+  else if (brix < 50) return 1.08 + ((brix - 20) * 0.0052);
+  else return 1.232 + ((brix - 50) * 0.0057);
+}
+
+function calcPepsi() {
+  const brix = parseFloat(document.getElementById('p_brix').value) || 0;
+  const kg = parseFloat(document.getElementById('p_kg').value) || 0;
+  const pBrix = parseFloat(document.getElementById('p_pbrix').value) || 0;
+  const pSG = parseFloat(document.getElementById('p_psg').value) || 1;
+  const yieldF = parseFloat(document.getElementById('p_yield').value) || 1;
+  const canVol = parseFloat(document.getElementById('p_can').value) || 0.355;
+  const pipe = parseFloat(document.getElementById('p_pipe').value) || 0;
+
+  const sugarKg = brix * kg / 10000;
+  const syrupSG = getSG(brix);
+  const productKg = (pBrix > 0) ? sugarKg * 10000 / pBrix : 0;
+  const productL = productKg / pSG * yieldF;
+  const cans = productL / canVol;
+  const total = cans + pipe;
+
+  document.getElementById('pepsiResult').innerHTML = `
+    <div class="result-row"><span>당량 (kg)</span><span>${sugarKg.toFixed(3)}</span></div>
+    <div class="result-row"><span>시럽 비중</span><span>${syrupSG.toFixed(4)}</span></div>
+    <div class="result-row"><span>제품 L</span><span>${productL.toFixed(1)}</span></div>
+    <div class="result-row"><span>생산 가능 캔</span><span>${Math.floor(cans).toLocaleString()} 본</span></div>
+    <div class="result-row"><span>배관 남은 수량</span><span>${pipe.toLocaleString()} 본</span></div>
+    <div class="result-row"><span>합계</span><span class="highlight">${Math.floor(total).toLocaleString()} 본</span></div>
+    ${line2Rows('p_', total)}
+  `;
+}
+
+// 사이다: 펩시와 같은 식 (제품 Brix 기본값만 10.25)
+function calcCider() {
+  const brix = parseFloat(document.getElementById('c_brix').value) || 0;
+  const kg = parseFloat(document.getElementById('c_kg').value) || 0;
+  const pBrix = parseFloat(document.getElementById('c_pbrix').value) || 0;
+  const pSG = parseFloat(document.getElementById('c_psg').value) || 1;
+  const yieldF = parseFloat(document.getElementById('c_yield').value) || 1;
+  const canVol = parseFloat(document.getElementById('c_can').value) || 0.355;
+  const pipe = parseFloat(document.getElementById('c_pipe').value) || 0;
+
+  const sugarKg = brix * kg / 10000;
+  const syrupSG = getSG(brix);
+  const productKg = (pBrix > 0) ? sugarKg * 10000 / pBrix : 0;
+  const productL = productKg / pSG * yieldF;
+  const cans = productL / canVol;
+  const total = cans + pipe;
+
+  document.getElementById('ciderResult').innerHTML = `
+    <div class="result-row"><span>당량 (kg)</span><span>${sugarKg.toFixed(3)}</span></div>
+    <div class="result-row"><span>시럽 비중</span><span>${syrupSG.toFixed(4)}</span></div>
+    <div class="result-row"><span>제품 L</span><span>${productL.toFixed(1)}</span></div>
+    <div class="result-row"><span>생산 가능 캔</span><span>${Math.floor(cans).toLocaleString()} 본</span></div>
+    <div class="result-row"><span>배관 남은 수량</span><span>${pipe.toLocaleString()} 본</span></div>
+    <div class="result-row"><span>합계</span><span class="highlight">${Math.floor(total).toLocaleString()} 본</span></div>
+    ${line2Rows('c_', total)}
+  `;
+}
+
+function calcZero() {
+  const brix = parseFloat(document.getElementById('z_brix').value) || 0;
+  const kg = parseFloat(document.getElementById('z_kg').value) || 0;
+  const pBrix = parseFloat(document.getElementById('z_pbrix').value) || 0;
+  const pSG = parseFloat(document.getElementById('z_psg').value) || 1;
+  const yieldF = parseFloat(document.getElementById('z_yield').value) || 1;
+  const canVol = parseFloat(document.getElementById('z_can').value) || 0.355;
+  const pipe = parseFloat(document.getElementById('z_pipe').value) || 0;
+
+  const sugarKg = brix * kg / 10000;
+  const syrupSG = getSG(brix);
+  const productKg = (pBrix > 0) ? sugarKg * 10000 / pBrix : 0;
+  const productL = productKg / pSG * yieldF;
+  const cans = productL / canVol;
+  const total = cans + pipe;
+
+  document.getElementById('zeroResult').innerHTML = `
+    <div class="result-row"><span>당량 (kg)</span><span>${sugarKg.toFixed(3)}</span></div>
+    <div class="result-row"><span>시럽 비중</span><span>${syrupSG.toFixed(4)}</span></div>
+    <div class="result-row"><span>제품 L</span><span>${productL.toFixed(1)}</span></div>
+    <div class="result-row"><span>생산 가능 캔</span><span>${Math.floor(cans).toLocaleString()} 본</span></div>
+    <div class="result-row"><span>배관 남은 수량</span><span>${pipe.toLocaleString()} 본</span></div>
+    <div class="result-row"><span>합계</span><span class="highlight">${Math.floor(total).toLocaleString()} 본</span></div>
+    ${line2Rows('z_', total)}
+  `;
+}
+
+// ===== 핫식스 / 핫식스 더킹퍼플 / 핫식스 더킹제로 (엑셀 배합계산: G2=D3*D4/10000, D10=G2*10000/D9, D13=D10/D11*D12, D16=D13/C16, D17=D16/24, 합계=D16+배관) =====
+function calcNew(tab) {
+  const pre = TAB_PRE[tab], g = id => parseFloat(document.getElementById(pre + id).value);
+  const brix = g('brix') || 0, kg = g('kg') || 0, pBrix = g('pbrix') || 0, pSG = g('psg') || 1, yieldF = g('yield') || 1, canVol = g('can') || (tab === 'n1' ? 0.355 : 0.5), pipe = g('pipe') || 0;
+  const sugarKg = brix * kg / 10000;
+  const syrupSG = getSG(brix);
+  const productKg = (pBrix > 0) ? sugarKg * 10000 / pBrix : 0;
+  const productL = productKg / pSG * yieldF;
+  const cans = productL / canVol;
+  const total = cans + pipe;
+  const tray = cans / 24;
+  document.getElementById(tab + 'Result').innerHTML = `
+    <div class="result-row"><span>당량 (kg)</span><span>${sugarKg.toFixed(3)}</span></div>
+    <div class="result-row"><span>시럽 비중</span><span>${syrupSG.toFixed(4)}</span></div>
+    <div class="result-row"><span>제품 L</span><span>${productL.toFixed(1)}</span></div>
+    <div class="result-row"><span>생산 가능 캔</span><span>${Math.floor(cans).toLocaleString()} 본</span></div>
+    <div class="result-row"><span>배관 남은 수량</span><span>${pipe.toLocaleString()} 본</span></div>
+    <div class="result-row"><span>합계</span><span class="highlight">${Math.floor(total).toLocaleString()} 본</span></div>
+    <div class="result-row"><span>트레이 (24본, 캔 기준)</span><span>${Math.floor(tray).toLocaleString()} 장 <small>(${tray.toFixed(2)})</small></span></div>
+    ${line2Rows(pre, total)}
+  `;
+  return { sugarKg, syrupSG, productKg, productL, cans, total, tray };
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+  document.getElementById(tab).classList.add('active');
+  recalc(tab);
+  renderTankPanel();
+  saveState();
+}
+
+// ===== 입력값 자동 저장 (localStorage, 버전 키) =====
+const STATE_KEY = 'pepsiCalc2ho_v1';
+let stateReady = false;
+let hs355Migrated = false;
+let cd1025Migrated = false;
+let r500Migrated = false;       // 500ml 시간당 생산량 60000→48000 옮김 여부     // 사이다 제품 Brix 10.30→10.25 옮김 여부      // 핫식스 캔 용량 0.5→0.355 옮김 여부 (옮겼으면 시작 직후 한 번 저장)          // 복원이 끝나기 전에는 저장하지 않음
+function numInputs() { return [...document.querySelectorAll('input[data-num]')]; }
+function saveState() {
+  if (!stateReady) return;
+  try {
+    const vals = {};
+    numInputs().forEach(el => { if (el.id) vals[el.id] = el.value; });
+    const st = { v: 1, hs355: 1, cd1025: 1, r500: 1, tab: currentTab, avgMode, sel: Object.fromEntries(Object.keys(tankSel).map(t => [t, [...tankSel[t]]])), vals, savedAt: Date.now() };
+    localStorage.setItem(STATE_KEY, JSON.stringify(st));
+  } catch (e) {}
+}
+function restoreState() {
+  let st = null;
+  try { st = JSON.parse(localStorage.getItem(STATE_KEY) || 'null'); } catch (e) { st = null; }
+  if (!st || st.v !== 1) return null;
+  try {
+    if (st.vals) Object.keys(st.vals).forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.hasAttribute('data-num') && typeof st.vals[id] === 'string') el.value = cleanNumText(st.vals[id], el.getAttribute('data-num') !== 'i');
+    });
+    // 핫식스(n1) 캔 용량: 예전 기본값 0.5로 저장된 값은 355ml(0.355)로 한 번만 옮김 (hs355 표시가 있으면 사용자가 넣은 값 그대로)
+    if (!st.hs355 && st.vals && String(st.vals.n1_can).trim() === '0.5') { document.getElementById('n1_can').value = '0.355'; hs355Migrated = true; }
+    // 사이다 제품 Brix: 예전 기본값 10.30(10.3)으로 저장된 값은 10.25로 한 번만 옮김 (cd1025 표시가 있으면 사용자 값 그대로)
+    if (!st.cd1025 && st.vals && ['10.3', '10.30'].includes(String(st.vals.c_pbrix).trim())) { document.getElementById('c_pbrix').value = '10.25'; cd1025Migrated = true; }
+    // 500ml 탭 시간당 생산량: 예전 기본값 60000으로 저장된 값은 48000으로 한 번만 옮김
+    if (!st.r500 && st.vals) ['n2_rate', 'n3_rate'].forEach(id => { if (String(st.vals[id]).trim() === '60000') { document.getElementById(id).value = '48000'; r500Migrated = true; } });
+    if (st.avgMode === 'w' || st.avgMode === 's') avgMode = st.avgMode;
+    Object.keys(tankSel).forEach(t => {
+      tankSel[t].clear();
+      ((st.sel && st.sel[t]) || []).forEach(i => { i = parseInt(i, 10); if (i >= 1 && i <= N_TANKS) tankSel[t].add(i); });
+    });
+    Object.keys(tankSel).forEach(applyTanks);
+    return TAB_NAME[st.tab] ? st.tab : 'pepsi';
+  } catch (e) { return null; }
+}
+document.addEventListener('input', saveState);
+document.addEventListener('change', saveState);
+function resetSavedValues() {
+  if (!confirm('저장된 입력값을 모두 지우고 기본값으로 되돌릴까요?\n(탱크 값·선택, 시럽·제품 설정이 초기화됩니다)')) return;
+  stateReady = false;
+  try { localStorage.removeItem(STATE_KEY); localStorage.removeItem('pepsiCalc.settings'); localStorage.removeItem('pepsiCalc.avgMode'); } catch (e) {}
+  numInputs().forEach(el => { el.value = el.defaultValue; });
+  Object.values(tankSel).forEach(x => x.clear());
+  avgMode = 'w';
+  calcPepsi(); calcCider(); calcZero(); NEW_TABS.forEach(calcNew);
+  switchTab('pepsi');
+  stateReady = true;
+  showToast('저장값을 초기화했습니다 (기본값)');
+}
+
+// ===== 숫자만 입력 (숫자 + 소수점 1개) =====
+function cleanNumText(v, allowDot) {
+  let out = '', dot = false;
+  for (const ch of String(v == null ? '' : v)) {
+    if (ch >= '0' && ch <= '9') out += ch;
+    else if (allowDot && (ch === '.' || ch === ',') && !dot) { dot = true; out += '.'; }
+  }
+  return out;
+}
+function sanitizeNumInput(el) {
+  const allowDot = el.getAttribute('data-num') !== 'i', v = el.value, out = cleanNumText(v, allowDot);
+  if (out === v) return;
+  let caret = null;
+  try { if (el.selectionStart != null) caret = cleanNumText(v.slice(0, el.selectionStart), allowDot).length; } catch (e) {}
+  // 커서 앞부분에 이미 점이 있었는지 반영 (뒤쪽 점 제거로 위치가 밀리지 않게)
+  el.value = out;
+  if (caret != null) { try { caret = Math.min(caret, out.length); el.setSelectionRange(caret, caret); } catch (e) {} }
+}
+// 캡처 단계: 각 칸의 oninput(계산)보다 먼저 값 정리
+document.addEventListener('input', e => { const el = e.target; if (el && el.hasAttribute && el.hasAttribute('data-num')) sanitizeNumInput(el); }, true);
+document.addEventListener('keydown', e => {
+  const el = e.target;
+  if (!el || !el.hasAttribute || !el.hasAttribute('data-num') || e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key;
+  if (!k || k.length !== 1) return;                          // Backspace, 화살표, Tab 등은 통과
+  if (k >= '0' && k <= '9') return;
+  if ((k === '.' || k === ',') && el.getAttribute('data-num') !== 'i') {
+    const v = el.value, a = el.selectionStart, b = el.selectionEnd;
+    const rest = (a != null && b != null) ? v.slice(0, a) + v.slice(b) : v;
+    if (rest.indexOf('.') < 0) return;                       // 소수점은 1개만
+  }
+  e.preventDefault();                                        // e, E, +, -, 문자 등 차단
+}, true);
+document.addEventListener('paste', e => {
+  const el = e.target;
+  if (!el || !el.hasAttribute || !el.hasAttribute('data-num')) return;
+  const cd = e.clipboardData || window.clipboardData; if (!cd) return;
+  e.preventDefault();
+  const allowDot = el.getAttribute('data-num') !== 'i', txt = cleanNumText(cd.getData('text'), allowDot);
+  try { el.setRangeText(txt, el.selectionStart, el.selectionEnd, 'end'); } catch (err) { el.value = el.value + txt; }
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+}, true);
+
+// ===== 결과 이미지 저장/공유 (캔버스에 직접 그림 → 오프라인 동작, 외부 라이브러리 없음) =====
+function seoulStamp() {
+  const d = new Date();
+  try {
+    const p = {};
+    new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false, weekday: 'short' })
+      .formatToParts(d).forEach(x => { p[x.type] = x.value; });
+    const hh = p.hour === '24' ? '00' : p.hour;
+    return { text: `${p.year}.${p.month}.${p.day} (${p.weekday}) ${hh}:${p.minute} KST`, file: `${p.year}${p.month}${p.day}_${hh}${p.minute}` };
+  } catch (e) {
+    const z = n => String(n).padStart(2, '0');
+    return { text: `${d.getFullYear()}.${z(d.getMonth() + 1)}.${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`, file: `${d.getFullYear()}${z(d.getMonth() + 1)}${z(d.getDate())}_${z(d.getHours())}${z(d.getMinutes())}` };
+  }
+}
+function collectCaptureData(tab) {
+  const pre = TAB_PRE[tab];
+  recalc(tab);
+  const val = id => { const v = (document.getElementById(id).value || '').trim(); return v === '' ? '-' : v; };
+  const c = combineTanks(tab);
+  const tanks = c.ids.map(i => { const t = tankVal(i); return `${i}번 ${t.brix == null ? '-' : t.brix} Bx / ${t.kg == null ? '-' : Number(t.kg).toLocaleString()} kg`; });
+  const f2 = v => v == null ? '-' : v.toFixed(2);
+  const tankLine = c.ids.length
+    ? `선택 탱크 ${c.ids.length}개 · 합계 ${Math.round(c.sumKg).toLocaleString()} kg · 평균 Brix ${f2(c.brix)} (${avgMode === 'w' ? '가중평균' : '단순평균'})`
+    : '탱크 선택 없음 (시럽 값 직접 입력)';
+  const inputs = [
+    ['시럽 Brix', val(pre + 'brix')], ['시럽 kg', val(pre + 'kg')],
+    ['제품 Brix', val(pre + 'pbrix')], ['제품 비중', val(pre + 'psg')],
+    ['수율', val(pre + 'yield')], ['캔 용량 (L)', val(pre + 'can')],
+    ['배관 남은 수량 (본)', val(pre + 'pipe')], ['파렛트 단수 (차감)', val(pre + 'pdeduct')],
+    ['시간당 생산량 (본/시간)', val(pre + 'rate')]
+  ];
+  const results = [...document.querySelectorAll('#' + tab + 'Result .result-row')].map(r => {
+    const sp = r.querySelectorAll(':scope > span'), vEl = sp[1];
+    let main = '', note = '';
+    if (vEl) vEl.childNodes.forEach(n => { if (n.nodeType === 1 && n.tagName === 'SMALL') note += n.textContent; else main += n.textContent; });
+    return { label: sp[0] ? sp[0].textContent.trim() : '', value: main.replace(/\s+/g, ' ').trim(), note: note.trim(), hl: !!(vEl && vEl.classList.contains('highlight')) };
+  });
+  return { tab, title: TAB_NAME[tab] + ' 생산량 계산 결과', tankLine, tanks, inputs, results, stamp: seoulStamp() };
+}
+function drawResultCanvas(tab, scale) {
+  const d = collectCaptureData(tab);
+  const LIGHT = document.documentElement.getAttribute('data-theme') === 'light';
+  const LMAP = { '#000': '#f5f5f5', '#0d0d0d': '#ffffff', '#333': '#d6d6d6', '#1a1a1a': '#fafafa', '#fff': '#111111', '#c8c8c8': '#555555', '#2e2e2e': '#e0e0e0', '#f2f2f2': '#111111', '#b0b0b0': '#555555', '#a8a8a8': '#555555', '#444': '#9a9a9a', '#161616': '#f7f7f7', '#e6e6e6': '#222222', '#aaa': '#666666', '#8a8a8a': '#777777' };
+  const C = c => (LIGHT && LMAP[c]) || c;   // 라이트 모드면 밝은 배경 · 어두운 글자
+  const S = scale || Math.max(2, Math.min(3, Math.round(window.devicePixelRatio || 2)));
+  const W = 640, PAD = 22, FONT = '-apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", Roboto, sans-serif';
+  function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r); ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h); ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath(); }
+  function wrap(ctx, text, maxW) {
+    const out = []; let line = '';
+    for (const ch of text) { if (ctx.measureText(line + ch).width > maxW && line) { out.push(line); line = ch.trim() ? ch : ''; } else line += ch; }
+    if (line) out.push(line); return out.length ? out : [''];
+  }
+  // draw=false 이면 높이만 계산
+  function paint(ctx, draw, H) {
+    const font = (w, px) => { ctx.font = `${w} ${px}px ${FONT}`; };
+    const text = (t, x, y, col, align) => { if (!draw) return; ctx.fillStyle = col; ctx.textAlign = align || 'left'; ctx.fillText(t, x, y); };
+    if (draw) { ctx.fillStyle = C('#000'); ctx.fillRect(0, 0, W, H); ctx.fillStyle = C('#0d0d0d'); rr(ctx, 8, 8, W - 16, H - 16, 14); ctx.fill(); ctx.strokeStyle = C('#333'); ctx.lineWidth = 1; ctx.stroke(); }
+    ctx.textBaseline = 'alphabetic';
+    let y = 8;
+    // 헤더
+    if (draw) { ctx.save(); rr(ctx, 8, 8, W - 16, 86, 14); ctx.clip(); ctx.fillStyle = C('#1a1a1a'); ctx.fillRect(8, 8, W - 16, 86); ctx.restore(); ctx.fillStyle = C('#333'); ctx.fillRect(8, 93, W - 16, 1); }
+    font('800', 24); text(d.title, PAD + 8, y + 40, C('#fff'));
+    font('500', 15); text('2호 라인 · ' + d.stamp.text, PAD + 8, y + 68, C('#c8c8c8'));
+    y = 94 + 18;
+    // 입력값
+    const boxX = PAD, boxW = W - PAD * 2;
+    let top = y; y += 32;
+    font('700', 15); const tLines = wrap(ctx, d.tankLine, boxW - 28);
+    const tankDetail = d.tanks.length ? wrap(ctx, d.tanks.join('  ·  '), boxW - 28) : [];
+    const rowsN = Math.ceil(d.inputs.length / 2), colW = (boxW - 28 - 14) / 2;
+    const inH = 32 + tLines.length * 22 + (tankDetail.length ? tankDetail.length * 20 + 4 : 0) + 8 + rowsN * 46 + 6;
+    if (draw) { ctx.fillStyle = C('#1a1a1a'); rr(ctx, boxX, top, boxW, inH, 10); ctx.fill(); ctx.strokeStyle = C('#2e2e2e'); ctx.stroke(); }
+    font('700', 16); text('입력값', boxX + 14, top + 24, C('#fff'));
+    font('700', 15); tLines.forEach(l => { y += 0; text(l, boxX + 14, y + 16, C('#f2f2f2')); y += 22; });
+    font('500', 13.5); tankDetail.forEach(l => { text(l, boxX + 14, y + 14, C('#b0b0b0')); y += 20; }); if (tankDetail.length) y += 4;
+    y += 8;
+    d.inputs.forEach((it, i) => {
+      const cx = boxX + 14 + (i % 2) * (colW + 14), cy = y + Math.floor(i / 2) * 46;
+      font('500', 12.5); text(it[0], cx, cy + 12, C('#a8a8a8'));
+      if (draw) { ctx.fillStyle = C('#0d0d0d'); rr(ctx, cx, cy + 17, colW, 25, 5); ctx.fill(); ctx.strokeStyle = C('#444'); ctx.stroke(); }
+      font('700', 15); text(it[1], cx + 8, cy + 35, C('#fff'));
+    });
+    y = top + inH + 14;
+    // 결과
+    top = y; y += 14;
+    const rowsH = d.results.map(r => { font(r.hl ? '700' : '500', 13); const nl = r.note ? wrap(ctx, r.note, boxW - 40).length : 0; return (r.hl ? 34 : 30) + nl * 18; });
+    const resH = 14 + rowsH.reduce((a, b) => a + b, 0) + 10;
+    if (draw) { ctx.fillStyle = C('#161616'); rr(ctx, boxX, top, boxW, resH, 8); ctx.fill(); ctx.strokeStyle = C('#333'); ctx.stroke(); ctx.fillStyle = C('#fff'); ctx.fillRect(boxX, top + 1, 4, resH - 2); }
+    d.results.forEach((r, i) => {
+      const h = rowsH[i], base = y + (r.hl ? 23 : 20);
+      font('500', 15); text(r.label, boxX + 18, base, C('#e6e6e6'));
+      font(r.hl ? '800' : '500', r.hl ? 18 : 15); text(r.value, boxX + boxW - 14, base, C('#fff'), 'right');
+      if (r.note) { font('400', 12.5); wrap(ctx, r.note, boxW - 40).forEach((l, k) => text(l, boxX + boxW - 14, base + 18 + k * 18, C('#aaa'), 'right')); }
+      if (draw && i < d.results.length - 1) { ctx.fillStyle = C('#2e2e2e'); ctx.fillRect(boxX + 16, y + h - 1, boxW - 30, 1); }
+      y += h;
+    });
+    y = top + resH + 16;
+    // 하단 서명
+    font('500', 13); text('제작: 명섭 · ' + d.stamp.text, W / 2, y + 8, C('#8a8a8a'), 'center');
+    return y + 30;
+  }
+  const m = document.createElement('canvas'); m.width = m.height = 4;
+  const H = Math.ceil(paint(m.getContext('2d'), false, 0));
+  const cv = document.createElement('canvas'); cv.width = W * S; cv.height = H * S;
+  const ctx = cv.getContext('2d'); ctx.scale(S, S);
+  paint(ctx, true, H);
+  cv._stampFile = d.stamp.file;
+  return cv;
+}
+// 동기식으로 PNG 생성 (iOS Safari 공유는 탭 직후 바로 호출해야 해서 await 없이 처리)
+function makeResultPNG(tab) {
+  const cv = drawResultCanvas(tab);
+  const dataURL = cv.toDataURL('image/png');
+  const bin = atob(dataURL.split(',')[1]), u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  const name = `pepsi_2ho_${FILE_TAG[tab]}_${cv._stampFile}.png`;
+  const blob = new Blob([u8], { type: 'image/png' });
+  let file = null; try { file = new File([blob], name, { type: 'image/png' }); } catch (e) {}
+  return { dataURL, blob, file, name, width: cv.width, height: cv.height };
+}
+function isIOS() { return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+let toastTimer = null;
+function showToast(msg) {
+  let t = document.getElementById('appToast');
+  if (!t) { t = document.createElement('div'); t.id = 'appToast'; t.className = 'app-toast'; document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+function showImageOverlay(png, msg) {
+  let ov = document.getElementById('imgOverlay');
+  if (!ov) {
+    ov = document.createElement('div'); ov.id = 'imgOverlay'; ov.className = 'img-overlay';
+    ov.innerHTML = '<p id="imgOverlayMsg"></p><img id="imgOverlayImg" alt="계산 결과 이미지"><div class="ov-btns"><a id="imgOverlayDl">⬇ 다운로드</a><button type="button" id="imgOverlayClose">닫기</button></div>';
+    document.body.appendChild(ov);
+    document.getElementById('imgOverlayClose').onclick = () => ov.classList.remove('show');
+    ov.addEventListener('click', e => { if (e.target === ov) ov.classList.remove('show'); });
+  }
+  document.getElementById('imgOverlayMsg').textContent = msg;
+  document.getElementById('imgOverlayImg').src = png.dataURL;
+  const a = document.getElementById('imgOverlayDl'); a.href = png.dataURL; a.download = png.name;
+  ov.classList.add('show'); ov.scrollTop = 0;
+}
+function downloadPNG(png) {
+  const url = URL.createObjectURL(png.blob), a = document.createElement('a');
+  a.href = url; a.download = png.name; a.style.display = 'none';
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 4000);
+}
+function fallbackSave(png) {
+  if (isIOS()) { showImageOverlay(png, '이미지를 길게 눌러 "사진 앱에 저장" 또는 공유를 선택하세요.'); return; }
+  try { downloadPNG(png); showToast('결과 이미지를 저장했습니다 (다운로드 폴더)'); }
+  catch (e) { showImageOverlay(png, '이미지를 길게 눌러 저장하세요.'); }
+}
+function shareResult(tab, btn) {
+  let png;
+  try { png = makeResultPNG(tab); } catch (e) { console.error(e); showToast('이미지 생성 실패: ' + (e.message || e)); return; }
+  let canShareFiles = false;
+  try { canShareFiles = !!(png.file && navigator.canShare && navigator.share && navigator.canShare({ files: [png.file] })); } catch (e) {}
+  if (!canShareFiles) { fallbackSave(png); return; }
+  if (btn) btn.disabled = true;
+  navigator.share({ files: [png.file], title: '펩시 생산량 계산 결과' })
+    .catch(err => { if (err && err.name === 'AbortError') return; console.warn('share 실패', err); fallbackSave(png); })   // 사용자가 취소하면 조용히 종료
+    .finally(() => { if (btn) btn.disabled = false; });
+}
+// ===== 다크 / 라이트 모드 (별도 키에 저장, 저장값 초기화와 무관한 화면 설정) =====
+const THEME_KEY = 'pepsiCalc2ho_theme';
+function currentTheme() { return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'; }
+function applyTheme(t) {
+  t = t === 'light' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  const m = document.querySelector('meta[name="theme-color"]');
+  if (m) m.setAttribute('content', t === 'light' ? '#f5f5f5' : '#000000');
+  const b = document.getElementById('themeToggle');
+  if (b) b.setAttribute('aria-label', t === 'light' ? '다크 모드로 바꾸기' : '라이트 모드로 바꾸기');
+}
+function toggleTheme() {
+  const t = currentTheme() === 'light' ? 'dark' : 'light';
+  applyTheme(t);   // 화면 모드는 저장하지 않음: 다음 실행은 항상 라이트 모드
+}
+applyTheme(currentTheme());
+buildTankRows();
+loadSettings();
+const restoredTab = restoreState();   // 저장된 입력값 복원 (첫 계산 전에)
+SETTING_IDS.forEach(id => document.getElementById(id).addEventListener('input', saveSettings));
+calcPepsi();
+calcCider();
+calcZero();
+NEW_TABS.forEach(calcNew);
+renderTankPanel();
+if (restoredTab && restoredTab !== 'pepsi') switchTab(restoredTab);
+stateReady = true;
+if (hs355Migrated || cd1025Migrated || r500Migrated) saveState();
+</script>
+<button type="button" id="toTop" class="to-top" aria-label="맨 위로" title="맨 위로">↑</button>
+<script>
+/* ===== UX 개선 (계산 로직과 무관): 맨 위로 버튼 + 키보드가 가리는 입력칸 자동 스크롤 ===== */
+(function () {
+  var btn = document.getElementById('toTop'), ticking = false;
+  function updateTopBtn() { ticking = false; btn.classList.toggle('show', (window.scrollY || document.documentElement.scrollTop) > 400); }
+  window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(updateTopBtn); } }, { passive: true });
+  btn.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+  updateTopBtn();
+
+  var vv = window.visualViewport, baseH = vv ? vv.height : window.innerHeight, timer = null;
+  function isField(el) {
+    if (!el || !el.tagName) return false;
+    if (el.tagName === 'SELECT' || el.tagName === 'TEXTAREA') return true;
+    return el.tagName === 'INPUT' && !/^(checkbox|radio|file|button|submit|reset|range|color|hidden)$/i.test(el.type);
+  }
+  // 입력칸이 보이는 영역(키보드 위) 안에 있는지 확인 → 아니면 가운데로 스크롤 (포커스/값은 건드리지 않음)
+  function revealActive() {
+    var el = document.activeElement;
+    if (!isField(el)) return;
+    var r = el.getBoundingClientRect(), top = vv ? vv.offsetTop : 0, h = vv ? vv.height : window.innerHeight, m = 24;
+    if (r.top >= top + m && r.bottom <= top + h - m) return;          // 이미 잘 보임
+    try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { el.scrollIntoView(false); }
+    setTimeout(function () {                                             // 일부 브라우저: 키보드 영역 기준으로 한 번 더 보정
+      if (document.activeElement !== el) return;
+      var r2 = el.getBoundingClientRect(), t2 = vv ? vv.offsetTop : 0, h2 = vv ? vv.height : window.innerHeight;
+      if (r2.top < t2 + m || r2.bottom > t2 + h2 - m) window.scrollBy({ top: (r2.top - t2) - (h2 - r2.height) / 2, behavior: 'smooth' });
+    }, 450);
+  }
+  function schedule(ms) { clearTimeout(timer); timer = setTimeout(revealActive, ms); }
+  document.addEventListener('focusin', function (e) { if (isField(e.target)) schedule(300); });
+  function onVVResize() {
+    var h = vv ? vv.height : window.innerHeight;
+    if (h > baseH) baseH = h;
+    var kb = Math.max(0, Math.round(baseH - h));                         // 키보드 높이 추정
+    document.documentElement.style.setProperty('--kb-pad', (kb > 80 ? kb : 0) + 'px');
+    if (kb > 80 && isField(document.activeElement)) schedule(120);
+  }
+  if (vv) vv.addEventListener('resize', onVVResize); else window.addEventListener('resize', onVVResize);
+  window.addEventListener('orientationchange', function () { setTimeout(function () { baseH = vv ? vv.height : window.innerHeight; }, 500); });
+})();
+</script>
+</body>
+</html>
